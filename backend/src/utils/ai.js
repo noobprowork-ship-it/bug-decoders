@@ -49,12 +49,15 @@ export function aiErrorPayload(err) {
  * a stable `code` for the frontend, and a friendly `hint` for the user.
  */
 export async function tryAI(fn) {
-  if (!process.env.OPENAI_API_KEY) {
+  const hasIntegration =
+    process.env.AI_INTEGRATIONS_OPENAI_API_KEY && process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+  const hasUserKey = process.env.OPENAI_API_KEY;
+  if (!hasIntegration && !hasUserKey) {
     throw new AIError({
       status: 503,
       code: "ai_not_configured",
       message: "Aurora's AI provider is not configured on this server.",
-      hint: "Set OPENAI_API_KEY in the server environment to enable AI features.",
+      hint: "Connect Replit AI Integrations or set OPENAI_API_KEY in the server environment.",
     });
   }
 

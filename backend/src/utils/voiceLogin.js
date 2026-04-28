@@ -1,36 +1,32 @@
 import fs from "fs";
-import FormData from "form-data";
-import axios from "axios";
-import { openai } from "../config/openai.js";
+import { toFile } from "openai";
+import { openai, isAIConfigured } from "../config/openai.js";
 
 /**
- * Transcribe an audio buffer/file with the OpenAI Whisper API.
+ * Transcribe an audio buffer/file using the OpenAI SDK so it works with both
+ * the official OpenAI endpoint and Replit AI Integrations (managed billing).
  * Accepts either a Buffer or a filesystem path.
  */
 export async function transcribeAudio({ buffer, filename = "audio.webm", filePath, mimetype = "audio/webm" }) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
+  if (!isAIConfigured) throw new Error("AI provider is not configured");
 
-  const form = new FormData();
+  let file;
   if (filePath) {
-    form.append("file", fs.createReadStream(filePath), { filename, contentType: mimetype });
+    file = await toFile(fs.createReadStream(filePath), filename, { type: mimetype });
   } else if (buffer) {
-    form.append("file", buffer, { filename, contentType: mimetype });
+    file = await toFile(buffer, filename, { type: mimetype });
   } else {
     throw new Error("transcribeAudio requires either `buffer` or `filePath`");
   }
-  form.append("model", process.env.OPENAI_WHISPER_MODEL || "whisper-1");
 
-  const { data } = await axios.post("https://api.openai.com/v1/audio/transcriptions", form, {
-    headers: {
-      ...form.getHeaders(),
-      Authorization: `Bearer ${apiKey}`,
-    },
-    maxBodyLength: Infinity,
-    maxContentLength: Infinity,
+  const model = process.env.OPENAI_WHISPER_MODEL || "gpt-4o-mini-transcribe";
+
+  const response = await openai.audio.transcriptions.create({
+    file,
+    model,
   });
 
-  return data?.text || "";
+  return response?.text || "";
 }
 
 /**
