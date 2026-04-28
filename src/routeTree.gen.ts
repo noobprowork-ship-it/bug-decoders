@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MultiverseRouteImport } from './routes/multiverse'
 import { Route as MindRouteImport } from './routes/mind'
+import { Route as IdentityRouteImport } from './routes/identity'
 import { Route as GoieRouteImport } from './routes/goie'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CinematicRouteImport } from './routes/cinematic'
@@ -24,6 +25,11 @@ const MultiverseRoute = MultiverseRouteImport.update({
 const MindRoute = MindRouteImport.update({
   id: '/mind',
   path: '/mind',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IdentityRoute = IdentityRouteImport.update({
+  id: '/identity',
+  path: '/identity',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GoieRoute = GoieRouteImport.update({
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/cinematic': typeof CinematicRoute
   '/dashboard': typeof DashboardRoute
   '/goie': typeof GoieRoute
+  '/identity': typeof IdentityRoute
   '/mind': typeof MindRoute
   '/multiverse': typeof MultiverseRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/cinematic': typeof CinematicRoute
   '/dashboard': typeof DashboardRoute
   '/goie': typeof GoieRoute
+  '/identity': typeof IdentityRoute
   '/mind': typeof MindRoute
   '/multiverse': typeof MultiverseRoute
 }
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/cinematic': typeof CinematicRoute
   '/dashboard': typeof DashboardRoute
   '/goie': typeof GoieRoute
+  '/identity': typeof IdentityRoute
   '/mind': typeof MindRoute
   '/multiverse': typeof MultiverseRoute
 }
@@ -79,16 +88,25 @@ export interface FileRouteTypes {
     | '/cinematic'
     | '/dashboard'
     | '/goie'
+    | '/identity'
     | '/mind'
     | '/multiverse'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/cinematic' | '/dashboard' | '/goie' | '/mind' | '/multiverse'
+  to:
+    | '/'
+    | '/cinematic'
+    | '/dashboard'
+    | '/goie'
+    | '/identity'
+    | '/mind'
+    | '/multiverse'
   id:
     | '__root__'
     | '/'
     | '/cinematic'
     | '/dashboard'
     | '/goie'
+    | '/identity'
     | '/mind'
     | '/multiverse'
   fileRoutesById: FileRoutesById
@@ -98,6 +116,7 @@ export interface RootRouteChildren {
   CinematicRoute: typeof CinematicRoute
   DashboardRoute: typeof DashboardRoute
   GoieRoute: typeof GoieRoute
+  IdentityRoute: typeof IdentityRoute
   MindRoute: typeof MindRoute
   MultiverseRoute: typeof MultiverseRoute
 }
@@ -116,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/mind'
       fullPath: '/mind'
       preLoaderRoute: typeof MindRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/identity': {
+      id: '/identity'
+      path: '/identity'
+      fullPath: '/identity'
+      preLoaderRoute: typeof IdentityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/goie': {
@@ -154,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   CinematicRoute: CinematicRoute,
   DashboardRoute: DashboardRoute,
   GoieRoute: GoieRoute,
+  IdentityRoute: IdentityRoute,
   MindRoute: MindRoute,
   MultiverseRoute: MultiverseRoute,
 }
