@@ -6,11 +6,18 @@ import { Clapperboard, Sparkles, Loader2, AlertTriangle } from "lucide-react";
 import { cinematic } from "@/lib/api";
 
 export const Route = createFileRoute("/cinematic")({
-  head: () => ({ meta: [{ title: "Cinematic — Aurora Mind OS" }] }),
+  head: () => ({ meta: [{ title: "Cinematic — LifeOS" }] }),
   component: Cinematic,
 });
 
-type Scene = { index: number; setting: string; action: string; dialogue?: string; visual_prompt: string };
+type Scene = {
+  index: number;
+  setting: string;
+  action: string;
+  dialogue?: string;
+  visual_prompt: string;
+  image?: { url?: string; dataUrl?: string } | null;
+};
 type Result = { title?: string; logline?: string; scenes?: Scene[] };
 
 const TONES = ["epic", "intimate", "noir", "hopeful", "surreal"];
@@ -41,7 +48,7 @@ function Cinematic() {
 
   return (
     <Shell>
-      <PageHeader eyebrow="Module 05" icon={Clapperboard} title="Life Cinematic Director" subtitle="Turn the story of your life into cinema. Get scenes you can film — or just feel." />
+      <PageHeader eyebrow="Module 05" icon={Clapperboard} title="Life Cinematic Director" subtitle="Turn the story of your life into cinema — with AI-generated images for every scene." />
 
       <GlowCard glow="blue" className="mb-6">
         <div className="space-y-4">
@@ -68,8 +75,13 @@ function Cinematic() {
             </div>
           </div>
           <NeonButton onClick={onGenerate} disabled={loading || !theme.trim()}>
-            {loading ? <><Loader2 className="inline h-4 w-4 mr-2 animate-spin" /> Directing</> : <><Sparkles className="inline h-4 w-4 mr-2" /> Generate cinematic</>}
+            {loading ? <><Loader2 className="inline h-4 w-4 mr-2 animate-spin" /> Directing & rendering scenes…</> : <><Sparkles className="inline h-4 w-4 mr-2" /> Generate cinematic</>}
           </NeonButton>
+          {loading && (
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Image generation can take 30–60 seconds. Hang tight.
+            </p>
+          )}
         </div>
       </GlowCard>
 
@@ -91,22 +103,39 @@ function Cinematic() {
           </GlowCard>
 
           <div className="space-y-4">
-            {(result.scenes || []).map((s, i) => (
-              <GlowCard key={i} glow={i % 2 === 0 ? "blue" : "pink"} className="animate-rise">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Scene {s.index ?? i + 1}</div>
-                  <div className="text-[10px] uppercase tracking-[0.25em] text-primary">{s.setting}</div>
-                </div>
-                <p className="text-sm mb-3">{s.action}</p>
-                {s.dialogue && <p className="text-sm italic glass rounded-2xl p-3 mb-3">{s.dialogue}</p>}
-                {s.visual_prompt && (
-                  <div className="border-t border-white/5 pt-3">
-                    <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-1">Visual prompt</div>
-                    <p className="text-xs font-mono text-muted-foreground">{s.visual_prompt}</p>
+            {(result.scenes || []).map((s, i) => {
+              const imgSrc = s.image?.url || s.image?.dataUrl || null;
+              return (
+                <GlowCard key={i} glow={i % 2 === 0 ? "blue" : "pink"} className="animate-rise">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Scene {s.index ?? i + 1}</div>
+                    <div className="text-[10px] uppercase tracking-[0.25em] text-primary">{s.setting}</div>
                   </div>
-                )}
-              </GlowCard>
-            ))}
+                  {imgSrc ? (
+                    <div className="rounded-2xl overflow-hidden mb-3 bg-black/30">
+                      <img
+                        src={imgSrc}
+                        alt={s.visual_prompt || `Scene ${s.index ?? i + 1}`}
+                        className="w-full h-auto block"
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl mb-3 p-6 glass text-center text-xs text-muted-foreground">
+                      Image generation skipped or unavailable for this scene.
+                    </div>
+                  )}
+                  <p className="text-sm mb-3">{s.action}</p>
+                  {s.dialogue && <p className="text-sm italic glass rounded-2xl p-3 mb-3">{s.dialogue}</p>}
+                  {s.visual_prompt && (
+                    <div className="border-t border-white/5 pt-3">
+                      <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-1">Visual prompt</div>
+                      <p className="text-xs font-mono text-muted-foreground">{s.visual_prompt}</p>
+                    </div>
+                  )}
+                </GlowCard>
+              );
+            })}
           </div>
         </>
       )}

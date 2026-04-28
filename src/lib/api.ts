@@ -136,8 +136,21 @@ export const auth = {
       { auth: false }
     );
   },
+  googleDemo: (body: { name?: string }) =>
+    request<{ token: string; user: { id: string; name?: string; email: string; tier: string }; notice?: string }>(
+      "/api/auth/google-demo",
+      json(body),
+      { auth: false }
+    ),
   me: () => request<{ user: unknown }>("/api/auth/me"),
 };
+
+/** Transcribe audio (used by floating AI assistant for voice input). */
+export function transcribeAudio(audio: Blob) {
+  const fd = new FormData();
+  fd.append("audio", audio, "voice.webm");
+  return request<{ text: string }>("/api/ai/transcribe", { method: "POST", body: fd });
+}
 
 // ---------------- AI Life Command Center ----------------
 export const commandCenter = {

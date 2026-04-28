@@ -106,6 +106,62 @@ export async function voiceLogin(req, res) {
   }
 }
 
+/**
+ * POST /api/auth/google-demo
+ *
+ * "Continue with Google" — pragmatic demo flow.
+ *
+ * Production Google OAuth requires Google Cloud OAuth client credentials,
+ * which aren't configured in this environment. To keep the button useful
+ * and the UX functional, this endpoint accepts a display name and creates
+ * (or reuses) a deterministic LifeOS account with a `@lifeos.demo` email.
+ * It returns the same JWT shape as the other login flows so the frontend
+ * can treat it identically.
+ *
+ * Body: { name?: string }
+ */
+export async function demoGoogleLogin(req, res) {
+  try {
+    const rawName = (req.body?.name || "").toString().trim();
+    const handle = (rawName || "explorer")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 24) || "explorer";
+    const email = `${handle}-${Date.now().toString(36).slice(-4)}@lifeos.demo`;
+
+    let user = null;
+    try {
+      user = await User.create({
+        name: rawName || "LifeOS Explorer",
+        email,
+        tier: "free",
+      });
+    } catch (dbErr) {
+      // DB unavailable — return a stateless guest token so the UI still works.
+      const token = signToken({ id: "guest-google", email });
+      return res.json({
+        token,
+        user: { id: "guest-google", name: rawName || "LifeOS Explorer", email, tier: "guest" },
+        notice: "Demo Google sign-in (no database connected — session is in-memory).",
+      });
+    }
+
+    user.lastLoginAt = new Date();
+    await user.save().catch(() => {});
+
+    const token = signToken({ id: user._id.toString(), email: user.email });
+    return res.json({
+      token,
+      user: { id: user._id, name: user.name, email: user.email, tier: user.tier },
+      notice: "Demo Google sign-in. For real OAuth, connect a Google OAuth client.",
+    });
+  } catch (err) {
+    console.error("[authController.demoGoogleLogin]", err);
+    return res.status(500).json({ error: err.message });
+  }
+}
+
 export async function me(req, res) {
   try {
     const user = await User.findById(req.user.id).select("-passwordHash");

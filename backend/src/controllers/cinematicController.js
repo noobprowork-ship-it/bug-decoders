@@ -5,6 +5,35 @@ import { tryDB } from "../utils/db.js";
 import { tryAI } from "../utils/ai.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
+const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
+
+/**
+ * Generate a single image for a scene's visual prompt. Returns either
+ * { url } (hosted URL) or { dataUrl } (base64 data URL) so the frontend
+ * can display it directly. Returns null on failure (we don't want one
+ * failed image to take down the whole cinematic).
+ */
+async function generateSceneImage(prompt) {
+  if (!prompt || typeof prompt !== "string") return null;
+  try {
+    const result = await tryAI(() =>
+      openai.images.generate({
+        model: IMAGE_MODEL,
+        prompt: `Cinematic still, high detail, photoreal, dramatic lighting. ${prompt}`,
+        size: "1024x1024",
+        n: 1,
+      })
+    );
+    const item = result?.data?.[0];
+    if (!item) return null;
+    if (item.url) return { url: item.url };
+    if (item.b64_json) return { dataUrl: `data:image/png;base64,${item.b64_json}` };
+    return null;
+  } catch (err) {
+    console.warn("[cinematic] image gen failed:", err?.code || err?.message);
+    return null;
+  }
+}
 
 export async function generateCinematic(req, res, next) {
   try {
@@ -22,7 +51,7 @@ export async function generateCinematic(req, res, next) {
           {
             role: "system",
             content:
-              "You are Aurora's Cinematic Director. Output strict JSON ONLY: { title, logline, scenes:[{index,setting,action,dialogue,visual_prompt}] }. Each visual_prompt must be a vivid, comma-separated image-model prompt (lens, lighting, mood).",
+              "You are LifeOS's Cinematic Director. Output strict JSON ONLY: { title, logline, scenes:[{index,setting,action,dialogue,visual_prompt}] }. Each visual_prompt must be a vivid, comma-separated image-model prompt (lens, lighting, mood, composition).",
           },
           {
             role: "user",
@@ -37,6 +66,18 @@ Number of scenes: ${scenes}.`,
 
     const raw = completion.choices?.[0]?.message?.content ?? "{}";
     const parsed = safeJSON(raw, {});
+    const sceneList = Array.isArray(parsed?.scenes) ? parsed.scenes : [];
+
+    // Generate images in parallel — capped at 6 to keep latency reasonable.
+    const MAX_IMAGES = 6;
+    const imagedScenes = await Promise.all(
+      sceneList.map(async (s, i) => {
+        if (i >= MAX_IMAGES) return s;
+        const img = await generateSceneImage(s?.visual_prompt);
+        return { ...s, image: img };
+      })
+    );
+    parsed.scenes = imagedScenes;
 
     const session = await tryDB(() =>
       Session.create({

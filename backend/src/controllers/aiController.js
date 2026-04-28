@@ -3,6 +3,7 @@ import Session from "../models/Session.js";
 import { requireFields } from "../utils/validate.js";
 import { tryDB } from "../utils/db.js";
 import { tryAI } from "../utils/ai.js";
+import { transcribeAudio } from "../utils/voiceLogin.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 
@@ -19,7 +20,7 @@ export async function chat(req, res, next) {
         role: "system",
         content:
           system ||
-          "You are Aurora — a calm, deeply insightful AI life companion. Be concrete, kind and brief.",
+          "You are LifeOS — a calm, deeply insightful AI life companion. Be concrete, kind and brief.",
       },
       ...messages.map((m) => ({ role: m.role, content: m.content })),
     ];
@@ -87,4 +88,25 @@ export async function getSession(req, res) {
   );
   if (!session) return res.status(404).json({ error: "Session not found" });
   return res.json({ session });
+}
+
+/**
+ * POST /api/ai/transcribe — Whisper transcription for the floating
+ * AI assistant's voice input. Accepts a multipart audio upload and
+ * returns the transcribed text. Falls back to a clear error if the
+ * AI provider is not configured.
+ */
+export async function transcribe(req, res, next) {
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: "audio file is required (field: audio)" });
+    const text = await transcribeAudio({
+      buffer: file.buffer,
+      filename: file.originalname || "voice.webm",
+      mimetype: file.mimetype || "audio/webm",
+    });
+    return res.json({ text });
+  } catch (err) {
+    return next(err);
+  }
 }

@@ -6,7 +6,7 @@ import { Mic, Send, Loader2, AlertTriangle } from "lucide-react";
 import { openVoiceCompanion, type VoiceMessage } from "@/lib/api";
 
 export const Route = createFileRoute("/voice")({
-  head: () => ({ meta: [{ title: "Voice AI Companion — Aurora Mind OS" }] }),
+  head: () => ({ meta: [{ title: "Voice AI Companion — LifeOS" }] }),
   component: Voice,
 });
 

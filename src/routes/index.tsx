@@ -1,17 +1,22 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Sparkles, Mic, ChromeIcon, Mail, ArrowRight, Brain, Globe2, GitBranch, Clapperboard, Activity, Scale } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { Sparkles, Mic, ChromeIcon, Mail, ArrowRight, Brain, Globe2, GitBranch, Clapperboard } from "lucide-react";
+import { LoginModal, type LoginMode } from "@/components/aurora/LoginModal";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Aurora Mind OS — Enter the Future" },
-      { name: "description", content: "Login to Aurora Mind OS — the next-generation intelligent life operating system." },
+      { title: "LifeOS — Enter the Future" },
+      { name: "description", content: "Login to LifeOS — your intelligent life operating system." },
     ],
   }),
   component: Landing,
 });
 
 function Landing() {
+  const navigate = useNavigate();
+  const [modal, setModal] = useState<LoginMode | null>(null);
+
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Background grid */}
@@ -27,8 +32,8 @@ function Landing() {
               <Sparkles className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <div className="font-display font-bold tracking-wide">AURORA</div>
-              <div className="text-[10px] text-muted-foreground tracking-[0.3em] -mt-1">MIND OS</div>
+              <div className="font-display font-bold tracking-wide">LIFEOS</div>
+              <div className="text-[10px] text-muted-foreground tracking-[0.3em] -mt-1">YOUR LIFE, OPERATED</div>
             </div>
           </div>
           <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition">
@@ -47,14 +52,14 @@ function Landing() {
               Operate your <span className="text-gradient">life</span> like the future already happened.
             </h1>
             <p className="text-lg text-muted-foreground mb-8 max-w-lg">
-              Aurora Mind OS fuses global opportunity intelligence, multiverse simulation, and an AI companion into one holographic interface.
+              LifeOS fuses global opportunity intelligence, multiverse simulation, and an always-on AI companion into one holographic interface.
             </p>
 
             <div className="flex flex-wrap gap-3 mb-10">
               <Link to="/dashboard" className="group inline-flex items-center gap-2 bg-aurora text-primary-foreground px-6 py-3.5 rounded-2xl font-medium shadow-neon hover:scale-[1.02] transition">
-                Enter Aurora <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition" />
+                Enter LifeOS <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition" />
               </Link>
-              <button className="inline-flex items-center gap-2 glass px-6 py-3.5 rounded-2xl font-medium hover:bg-white/10 transition">
+              <button onClick={() => setModal("voice")} className="inline-flex items-center gap-2 glass px-6 py-3.5 rounded-2xl font-medium hover:bg-white/10 transition">
                 <Mic className="h-4 w-4 text-accent" /> Voice Login
               </button>
             </div>
@@ -89,20 +94,20 @@ function Landing() {
 
             <div className="glass-strong rounded-[2rem] p-8 pt-20 shadow-soft">
               <div className="text-center mb-8">
-                <h2 className="font-display text-2xl font-bold mb-2">Welcome back</h2>
+                <h2 className="font-display text-2xl font-bold mb-2">Welcome to LifeOS</h2>
                 <p className="text-sm text-muted-foreground">Your AI companion is online.</p>
               </div>
 
               <div className="space-y-3 mb-6">
-                <button className="w-full flex items-center justify-center gap-3 glass rounded-2xl py-3.5 hover:bg-white/10 transition group">
+                <button onClick={() => setModal("google")} className="w-full flex items-center justify-center gap-3 glass rounded-2xl py-3.5 hover:bg-white/10 transition group">
                   <ChromeIcon className="h-5 w-5 text-primary" />
                   <span className="font-medium text-sm">Continue with Google</span>
                 </button>
-                <button className="w-full flex items-center justify-center gap-3 glass rounded-2xl py-3.5 hover:bg-white/10 transition">
+                <button onClick={() => setModal("email")} className="w-full flex items-center justify-center gap-3 glass rounded-2xl py-3.5 hover:bg-white/10 transition">
                   <Mail className="h-5 w-5 text-accent" />
                   <span className="font-medium text-sm">Continue with Email</span>
                 </button>
-                <button className="w-full flex items-center justify-center gap-3 bg-aurora text-primary-foreground rounded-2xl py-3.5 shadow-neon hover:scale-[1.01] transition font-medium text-sm">
+                <button onClick={() => setModal("voice")} className="w-full flex items-center justify-center gap-3 bg-aurora text-primary-foreground rounded-2xl py-3.5 shadow-neon hover:scale-[1.01] transition font-medium text-sm">
                   <Mic className="h-5 w-5" />
                   Voice Login
                 </button>
@@ -115,7 +120,7 @@ function Landing() {
 
             {/* Modules preview chips */}
             <div className="mt-6 flex flex-wrap gap-2 justify-center">
-              {[Clapperboard, Activity, Scale].map((Icon, i) => (
+              {[Clapperboard, Brain, Globe2].map((Icon, i) => (
                 <div key={i} className="h-9 w-9 rounded-xl glass flex items-center justify-center">
                   <Icon className="h-4 w-4 text-muted-foreground" />
                 </div>
@@ -124,6 +129,17 @@ function Landing() {
           </div>
         </div>
       </div>
+
+      {modal && (
+        <LoginModal
+          mode={modal}
+          onClose={() => setModal(null)}
+          onSuccess={() => {
+            setModal(null);
+            navigate({ to: "/dashboard" });
+          }}
+        />
+      )}
     </div>
   );
 }

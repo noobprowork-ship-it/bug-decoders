@@ -12,9 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as VoiceRouteImport } from './routes/voice'
 import { Route as MultiverseRouteImport } from './routes/multiverse'
 import { Route as MindRouteImport } from './routes/mind'
-import { Route as IdentityRouteImport } from './routes/identity'
 import { Route as GoieRouteImport } from './routes/goie'
-import { Route as EthicsRouteImport } from './routes/ethics'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CinematicRouteImport } from './routes/cinematic'
 import { Route as IndexRouteImport } from './routes/index'
@@ -34,19 +32,9 @@ const MindRoute = MindRouteImport.update({
   path: '/mind',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IdentityRoute = IdentityRouteImport.update({
-  id: '/identity',
-  path: '/identity',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const GoieRoute = GoieRouteImport.update({
   id: '/goie',
   path: '/goie',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EthicsRoute = EthicsRouteImport.update({
-  id: '/ethics',
-  path: '/ethics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -69,9 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cinematic': typeof CinematicRoute
   '/dashboard': typeof DashboardRoute
-  '/ethics': typeof EthicsRoute
   '/goie': typeof GoieRoute
-  '/identity': typeof IdentityRoute
   '/mind': typeof MindRoute
   '/multiverse': typeof MultiverseRoute
   '/voice': typeof VoiceRoute
@@ -80,9 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/cinematic': typeof CinematicRoute
   '/dashboard': typeof DashboardRoute
-  '/ethics': typeof EthicsRoute
   '/goie': typeof GoieRoute
-  '/identity': typeof IdentityRoute
   '/mind': typeof MindRoute
   '/multiverse': typeof MultiverseRoute
   '/voice': typeof VoiceRoute
@@ -92,9 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/cinematic': typeof CinematicRoute
   '/dashboard': typeof DashboardRoute
-  '/ethics': typeof EthicsRoute
   '/goie': typeof GoieRoute
-  '/identity': typeof IdentityRoute
   '/mind': typeof MindRoute
   '/multiverse': typeof MultiverseRoute
   '/voice': typeof VoiceRoute
@@ -105,9 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cinematic'
     | '/dashboard'
-    | '/ethics'
     | '/goie'
-    | '/identity'
     | '/mind'
     | '/multiverse'
     | '/voice'
@@ -116,9 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cinematic'
     | '/dashboard'
-    | '/ethics'
     | '/goie'
-    | '/identity'
     | '/mind'
     | '/multiverse'
     | '/voice'
@@ -127,9 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cinematic'
     | '/dashboard'
-    | '/ethics'
     | '/goie'
-    | '/identity'
     | '/mind'
     | '/multiverse'
     | '/voice'
@@ -139,9 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CinematicRoute: typeof CinematicRoute
   DashboardRoute: typeof DashboardRoute
-  EthicsRoute: typeof EthicsRoute
   GoieRoute: typeof GoieRoute
-  IdentityRoute: typeof IdentityRoute
   MindRoute: typeof MindRoute
   MultiverseRoute: typeof MultiverseRoute
   VoiceRoute: typeof VoiceRoute
@@ -170,25 +144,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MindRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/identity': {
-      id: '/identity'
-      path: '/identity'
-      fullPath: '/identity'
-      preLoaderRoute: typeof IdentityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/goie': {
       id: '/goie'
       path: '/goie'
       fullPath: '/goie'
       preLoaderRoute: typeof GoieRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ethics': {
-      id: '/ethics'
-      path: '/ethics'
-      fullPath: '/ethics'
-      preLoaderRoute: typeof EthicsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -219,9 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CinematicRoute: CinematicRoute,
   DashboardRoute: DashboardRoute,
-  EthicsRoute: EthicsRoute,
   GoieRoute: GoieRoute,
-  IdentityRoute: IdentityRoute,
   MindRoute: MindRoute,
   MultiverseRoute: MultiverseRoute,
   VoiceRoute: VoiceRoute,

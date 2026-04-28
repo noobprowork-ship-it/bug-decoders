@@ -14,6 +14,16 @@ const opportunitySchema = new mongoose.Schema(
     score: { type: Number, default: 0 },
     momentum: { type: Number, default: 0 },
     sourceUrl: { type: String },
+    sourceName: { type: String },
+    references: {
+      type: [
+        new mongoose.Schema(
+          { title: String, url: String, why: String },
+          { _id: false }
+        ),
+      ],
+      default: [],
+    },
     tags: { type: [String], default: [] },
     metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
     expiresAt: { type: Date },

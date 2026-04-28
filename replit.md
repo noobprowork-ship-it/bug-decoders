@@ -1,7 +1,16 @@
-# Aurora Mind OS
+# LifeOS
 
 ## Overview
-A TanStack Start (React 19 + Vite 7) single-page/SSR application themed as "Aurora Mind OS — Intelligent Life Operating System". UI is built with shadcn-style components (Radix UI primitives + Tailwind CSS v4).
+A TanStack Start (React 19 + Vite 7) single-page/SSR application themed as **"LifeOS — Your Life, Operated"** (formerly "Aurora Mind OS"). UI is built with shadcn-style components (Radix UI primitives + Tailwind CSS v4). All visible product copy uses LifeOS branding; the `src/components/aurora/` folder name is preserved internally to avoid breaking imports.
+
+## Recent Changes (2026-04-28)
+- **Rebranded** end-to-end from "Aurora Mind OS" → "LifeOS" (UI strings, page titles, AI system prompts).
+- **Removed** Identity & Ethics features (route files deleted, removed from sidebar nav and dashboard tiles).
+- **Login system** wired: new `LoginModal` (`src/components/aurora/LoginModal.tsx`) supports Email login/signup, Voice login (MediaRecorder → Whisper), and a Google demo flow (`POST /api/auth/google-demo` — creates a `@lifeos.demo` account + JWT since real OAuth isn't configured).
+- **Floating AI Assistant** (`src/components/aurora/AssistantBot.tsx`) is mounted in `Shell` so it appears on every authenticated page (middle-right edge). It expands to a chat panel with streaming text replies (over the existing `/ws/voice` WebSocket) and voice input via `POST /api/ai/transcribe` (Whisper).
+- **Cinematic** now generates a real image per scene by calling `openai.images.generate` (model `gpt-image-1`) for each `visual_prompt` in parallel (capped at 6 images). Returned scenes carry `image: { url } | { dataUrl }` and the frontend renders them inline.
+- **GOIE** prompts now require `sourceUrl`, `sourceName`, and a `references[]` array per opportunity. The `Opportunity` Mongoose model gained `sourceName` + `references` subdoc; the frontend renders the source link plus a list of referenced citations with a "why" line each.
+- **Mind** decoder + universe explorer now also return a `mindmap: { center, branches:[{ label, color, children:[{ label }] }] }`. New `MindMap` component (`src/components/aurora/MindMap.tsx`) renders it as an interactive radial SVG (no external deps, fully responsive via viewBox).
 
 ## Tech Stack
 - **Framework:** TanStack Start + TanStack Router
@@ -12,8 +21,8 @@ A TanStack Start (React 19 + Vite 7) single-page/SSR application themed as "Auro
 - **Runtime:** Node.js 20
 
 ## Project Structure
-- `src/routes/` — TanStack Router file-based routes (index, dashboard, mind, multiverse, voice, identity, ethics, cinematic, goie)
-- `src/components/aurora/` — App-specific components (Shell, ui)
+- `src/routes/` — TanStack Router file-based routes (index, dashboard, mind, multiverse, voice, cinematic, goie). Identity and Ethics routes were removed.
+- `src/components/aurora/` — App-specific components: `Shell`, `ui`, `LoginModal`, `AssistantBot` (floating chat bot), `MindMap` (radial SVG mind map). Folder name kept for import stability after the LifeOS rebrand.
 - `src/components/ui/` — shadcn UI primitives
 - `src/lib/` — utilities
 - `src/hooks/` — React hooks
@@ -40,16 +49,17 @@ A separate Node + Express + MongoDB API lives in `backend/` so it doesn't collid
 - **Models:** `User`, `Session`, `Opportunity` (Mongoose). `bufferTimeoutMS=1500` so calls fail fast when no DB is configured. All controllers wrap DB operations with `tryDB(fn, fallback)` from `backend/src/utils/db.js`, so AI responses are always returned to the client even when MongoDB is unavailable — persistence is best-effort.
 - **AI error handling:** All controllers wrap OpenAI calls with `tryAI(() => openai.chat...)` from `backend/src/utils/ai.js`. The wrapper translates provider failures into a structured `AIError` (`status` 502/503, stable `code` like `ai_quota_exceeded` / `ai_rate_limited` / `ai_auth_failed` / `ai_not_configured` / `ai_provider_down`, friendly `message`, actionable `hint`). Controllers `next(err)` to the central handler in `server.js`, which serializes the AIError as JSON. The dashboard intentionally swallows AIErrors and exposes `aiStatus: { ok, code, message, hint }` so the UI degrades gracefully. The WebSocket voice handler emits the same shape as `{ type: "error", message, code, hint, providerStatus }`.
 - **CORS:** `FRONTEND_URL` env var (comma-separated origins). When unset, all origins are allowed (dev default).
-- **All 13 features mounted under `/api/*`:**
-  `auth` (incl. `voice-login`), `ai/chat`, `command-center`, `reality`, `identity` (incl. `evolution`),
-  `multiverse`, `cinematic`, `mind` (incl. `explore`), `goie` (incl. `generate`, `trends`),
+- **Features mounted under `/api/*`:**
+  `auth` (incl. `voice-login`, `google-demo`), `ai/chat` + `ai/transcribe` (Whisper), `command-center`, `reality`, `identity` (incl. `evolution`),
+  `multiverse`, `cinematic` (now generates one image per scene), `mind` (decode + explore now return a `mindmap`), `goie` (now returns `sourceUrl` + `sourceName` + `references[]`),
   `decision`, `activity`, `onboarding`, `dashboard`, plus WS `/ws/voice`.
+  (Identity/Ethics frontend routes were removed but the backend identity route is still mounted for backwards compatibility.)
 - **Env:** copy `backend/.env.example` → `backend/.env`. The server boots even when `MONGODB_URI` / `OPENAI_API_KEY` are missing — it logs warnings and AI/DB calls fail with clear, structured errors.
 
 ### Frontend ↔ backend wiring
 - `vite.config.ts` proxies `/api/*` and `/ws/voice` from port 5000 → `BACKEND_URL` (default `http://localhost:3001`). The frontend uses **relative URLs** so the same code works in dev, behind the Replit iframe proxy, and in production.
 - `src/lib/api.ts` is a typed fetch client covering every feature, plus `openVoiceCompanion()` for the streaming WebSocket.
-- Every feature route (`dashboard`, `multiverse`, `voice`, `goie`, `mind`, `cinematic`, `ethics`, `identity`) is now fully wired with input forms, loading/error states, and live AI result rendering — no more mock data.
+- Every feature route (`dashboard`, `multiverse`, `voice`, `goie`, `mind`, `cinematic`) is fully wired with input forms, loading/error states, and live AI result rendering — no mock data.
 
 ### Tests, Postman, WebSocket demo
 - **Test scripts:** `backend/tests/test-{voice-login,ai-chat,goie,multiverse,cinematic}.js`. Run all with `cd backend && npm test`. They wire-test each route, validate auth/400/401 contracts, and SKIP DB-backed assertions cleanly when `MONGODB_URI` is not set.

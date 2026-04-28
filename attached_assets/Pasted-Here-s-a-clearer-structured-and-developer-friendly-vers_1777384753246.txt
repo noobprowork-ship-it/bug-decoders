@@ -1,0 +1,119 @@
+Here’s a clearer, structured, and developer-friendly version of your prompt that makes it easier to understand and implement:
+
+---
+
+### **Enhanced Prompt**
+
+**Objective:**
+Update and fix the application by improving functionality, resolving bugs, and enhancing user experience.
+
+---
+
+### **1. App Rebranding**
+
+* Change the application name from **“Aurora Mind OS”** to **“LifeOS”** across the entire app.
+* Ensure consistency in:
+
+  * App title
+  * Splash screen
+  * Settings
+  * Metadata (if applicable)
+
+---
+
+### **2. Fix Login System (Critical Issue)**
+
+The login system is currently not working. Fix and ensure proper functionality for:
+
+* Voice command login
+* Google account login
+* Any other available authentication methods
+
+**Requirements:**
+
+* All login methods must work reliably
+* Proper error handling and user feedback
+* Smooth user experience without crashes or delays
+
+---
+
+### **3. AI Assistant Bot (Core Feature)**
+
+Add a **user-friendly AI assistant bot** with the following features:
+
+* Always available as a **small floating icon**
+* Positioned at the **middle-right edge of the screen**
+* Expandable when clicked
+
+**Bot Capabilities:**
+
+* Friendly and interactive communication
+* Voice interaction with adaptive tone based on user preference
+* Step-by-step guidance for users
+* Ability to resolve user issues within the app
+
+**Additional Features:**
+
+* Real-time updates (news, current activities, etc.)
+* Context-aware assistance
+
+---
+
+### **4. Cinematic Feature (Image Generation)**
+
+* Fix and enhance the **“Cinematic”** feature
+* It should:
+
+  * Generate images based on user input
+  * Understand scene descriptions clearly
+  * Produce relevant and accurate visuals
+
+---
+
+### **5. GOIE Feature Improvements**
+
+* Currently provides data but lacks source references
+
+**Fix Required:**
+
+* Display:
+
+  * Website URLs
+  * Source links
+  * Related references for each result
+* Ensure transparency and credibility of information
+
+---
+
+### **6. Mind Feature Enhancement**
+
+* Improve the **“Mind”** feature by:
+
+  * Automatically generating **mind maps**
+  * Based on:
+
+    * User inputs
+    * Retrieved system data
+* Ensure outputs are structured and visually understandable
+
+---
+
+### **7. Remove Unnecessary Features**
+
+* Completely remove the following features from the app:
+
+  * **IDENTITY**
+  * **ETHICS**
+
+---
+
+### **8. General Requirements**
+
+* Ensure all bugs are fixed efficiently
+* Maintain smooth performance
+* Focus on user-friendly design and responsiveness
+* Ensure all features integrate seamlessly
+
+---
+
+If you want, I can also convert this into a **perfect Replit AI prompt** or a **developer task checklist with code hints** 👍

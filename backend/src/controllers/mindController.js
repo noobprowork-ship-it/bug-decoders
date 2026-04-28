@@ -7,6 +7,9 @@ import { tryAI } from "../utils/ai.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 
+const MINDMAP_SCHEMA_HINT =
+  "mindmap:{ center:string, branches:[{ label:string, color?:string, children:[{label:string, children?:[{label:string}]}] }] }";
+
 export async function getMindProfile(req, res) {
   const user = await tryDB(
     () => User.findById(req.user.id).select("mindProfile").lean(),
@@ -30,7 +33,10 @@ export async function decodeMind(req, res, next) {
           {
             role: "system",
             content:
-              "You are Aurora's Mind Decoder. Output strict JSON ONLY: { themes:[], cognitive_patterns:[], emotional_tone, recommendations:[] }.",
+              "You are LifeOS's Mind Decoder. Output strict JSON ONLY: " +
+              `{ themes:[], cognitive_patterns:[], emotional_tone, recommendations:[], ${MINDMAP_SCHEMA_HINT} }. ` +
+              "The mindmap.center should be a 1-3 word distillation of what's on the user's mind. " +
+              "Use 4-6 branches drawn from themes and cognitive patterns; each branch should have 2-4 children that are concrete sub-thoughts, triggers or actions. Branch colors are short tokens like 'blue','pink','purple','green','amber'.",
           },
           {
             role: "user",
@@ -83,7 +89,10 @@ export async function exploreMindUniverse(req, res, next) {
           {
             role: "system",
             content:
-              "You are Aurora's Mind Universe Explorer. Output strict JSON ONLY: { personality:{type, traits:[{name,score(0-100)}]}, thinkingPatterns:[], cognitiveBiases:[], preferredEnvironments:[], growthLevers:[] }.",
+              "You are LifeOS's Mind Universe Explorer. Output strict JSON ONLY: " +
+              "{ personality:{type, traits:[{name,score(0-100)}]}, thinkingPatterns:[], cognitiveBiases:[], preferredEnvironments:[], growthLevers:[], " +
+              `${MINDMAP_SCHEMA_HINT} }. ` +
+              "The mindmap.center is the personality.type. Branches must include: 'Strengths', 'Patterns', 'Biases', 'Environments', 'Growth' — each with 2-4 specific child nodes drawn from the analysis.",
           },
           { role: "user", content: `Responses: ${JSON.stringify(responses)}` },
         ],

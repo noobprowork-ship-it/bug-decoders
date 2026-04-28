@@ -50,7 +50,10 @@ export async function generateOpportunities(req, res, next) {
           {
             role: "system",
             content:
-              "You are GOIE — Aurora's Global Opportunity Intelligence Engine. Output strict JSON ONLY: { opportunities:[{title,description,category(career|investment|education|relationship|health|creative|other),score(0-100),tags:[],sourceUrl}] }.",
+              "You are GOIE — LifeOS's Global Opportunity Intelligence Engine. Output strict JSON ONLY: { opportunities:[{title,description,category(career|investment|education|relationship|health|creative|other),score(0-100),tags:[],sourceUrl,sourceName,references:[{title,url,why}]}] }. " +
+              "CRITICAL: every opportunity MUST include a real, verifiable sourceUrl pointing to a credible website (e.g. ycombinator.com, who.int, gov.uk, mit.edu, github.com, statista.com, news outlets, official org sites). " +
+              "Provide a clear sourceName (the publisher) and 1-3 references[] with title + URL + a one-line 'why' explaining what each reference proves about this opportunity. " +
+              "Never invent random fictional URLs — prefer well-known stable domains.",
           },
           {
             role: "user",
@@ -77,6 +80,8 @@ Timeframe: ${timeframe}.`,
       score: clampInt(o.score, { min: 0, max: 100, fallback: 50 }),
       tags: Array.isArray(o.tags) ? o.tags : [],
       sourceUrl: o.sourceUrl || undefined,
+      sourceName: o.sourceName || undefined,
+      references: Array.isArray(o.references) ? o.references.slice(0, 5) : [],
       metadata: { timeframe, interests, skills },
     }));
 

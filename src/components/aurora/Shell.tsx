@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Globe2, GitBranch, Clapperboard, Brain, Activity, Scale, Mic, Sparkles } from "lucide-react";
+import { Home, Globe2, GitBranch, Clapperboard, Brain, Mic, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
+import { AssistantBot } from "./AssistantBot";
 
 const nav = [
   { to: "/dashboard", label: "Home", icon: Home },
@@ -8,8 +9,6 @@ const nav = [
   { to: "/multiverse", label: "Multiverse", icon: GitBranch },
   { to: "/cinematic", label: "Cinematic", icon: Clapperboard },
   { to: "/mind", label: "Mind", icon: Brain },
-  { to: "/identity", label: "Identity", icon: Activity },
-  { to: "/ethics", label: "Ethics", icon: Scale },
   { to: "/voice", label: "Voice AI", icon: Mic },
 ] as const;
 
@@ -26,8 +25,8 @@ export function Shell({ children }: { children: ReactNode }) {
               <Sparkles className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <div className="font-display font-bold text-sm tracking-wide">AURORA</div>
-              <div className="text-[10px] text-muted-foreground tracking-[0.25em]">MIND OS</div>
+              <div className="font-display font-bold text-sm tracking-wide">LIFEOS</div>
+              <div className="text-[10px] text-muted-foreground tracking-[0.25em]">YOUR LIFE, OPERATED</div>
             </div>
           </Link>
 
@@ -53,10 +52,10 @@ export function Shell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="glass rounded-2xl p-3 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-aurora flex items-center justify-center text-xs font-bold text-primary-foreground">A</div>
+            <div className="h-9 w-9 rounded-full bg-aurora flex items-center justify-center text-xs font-bold text-primary-foreground">L</div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate">Amit</div>
-              <div className="text-[10px] text-muted-foreground">Online · Pro tier</div>
+              <div className="text-sm font-medium truncate">You</div>
+              <div className="text-[10px] text-muted-foreground">Online · LifeOS ready</div>
             </div>
           </div>
         </div>
@@ -68,7 +67,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <div className="h-8 w-8 rounded-xl bg-aurora flex items-center justify-center">
             <Sparkles className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="font-display font-bold text-sm">AURORA</span>
+          <span className="font-display font-bold text-sm">LIFEOS</span>
         </Link>
         <Link to="/voice" className="h-9 w-9 rounded-full bg-aurora flex items-center justify-center animate-pulse-glow">
           <Mic className="h-4 w-4 text-primary-foreground" />
@@ -95,6 +94,9 @@ export function Shell({ children }: { children: ReactNode }) {
           })}
         </div>
       </nav>
+
+      {/* Floating AI Assistant — middle-right edge, on every page */}
+      <AssistantBot />
     </div>
   );
 }

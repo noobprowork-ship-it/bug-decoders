@@ -2,11 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Shell } from "@/components/aurora/Shell";
 import { GlowCard, PageHeader, StatChip, NeonButton } from "@/components/aurora/ui";
-import { Sparkles, Mic, ArrowUpRight, Globe2, GitBranch, Brain, TrendingUp, Zap, Clapperboard, Loader2 } from "lucide-react";
+import { Sparkles, Mic, ArrowUpRight, Globe2, GitBranch, Brain, Clapperboard, Loader2 } from "lucide-react";
 import { dashboard } from "@/lib/api";
 
 export const Route = createFileRoute("/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — Aurora Mind OS" }] }),
+  head: () => ({ meta: [{ title: "Dashboard — LifeOS" }] }),
   component: Dashboard,
 });
 
@@ -54,10 +54,10 @@ function Dashboard() {
           <p className="text-muted-foreground mt-1">
             {m?.sessionsLast7d
               ? `${m.sessionsLast7d} sessions in the last 7 days — momentum building.`
-              : "Try a module below — Aurora is online and ready."}
+              : "Try a module below — LifeOS is online and ready."}
           </p>
         </div>
-        <Link to="/voice"><NeonButton><Mic className="inline h-4 w-4 mr-2" /> Talk to Aurora</NeonButton></Link>
+        <Link to="/voice"><NeonButton><Mic className="inline h-4 w-4 mr-2" /> Talk to LifeOS</NeonButton></Link>
       </div>
 
       {loading && (
@@ -119,7 +119,7 @@ function Dashboard() {
               </div>
               <div className="absolute -inset-3 rounded-full border border-primary/30 animate-orbit" />
             </div>
-            <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-1">Aurora</div>
+            <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-1">LifeOS</div>
             <p className="text-sm">Ask me anything — life, work, decisions, ideas.</p>
             <Link to="/voice"><NeonButton className="mt-4">Open companion</NeonButton></Link>
           </div>
@@ -129,8 +129,6 @@ function Dashboard() {
         <ModuleTile to="/multiverse" title="Multiverse" desc="Simulate parallel paths" icon={GitBranch} glow="purple" />
         <ModuleTile to="/cinematic" title="Cinematic" desc="Your future, as a film" icon={Clapperboard} glow="pink" />
         <ModuleTile to="/mind" title="Mind Universe" desc="Map your inner cosmos" icon={Brain} glow="purple" />
-        <ModuleTile to="/identity" title="Identity Tracker" desc="Skill & growth signals" icon={TrendingUp} glow="blue" />
-        <ModuleTile to="/ethics" title="Ethics Panel" desc="Decide with foresight" icon={Zap} glow="pink" />
       </div>
 
       {(data?.recentActivity?.length || data?.topOpportunities?.length) ? (

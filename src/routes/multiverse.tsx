@@ -6,7 +6,7 @@ import { GitBranch, Sparkles, Loader2, AlertTriangle } from "lucide-react";
 import { multiverse } from "@/lib/api";
 
 export const Route = createFileRoute("/multiverse")({
-  head: () => ({ meta: [{ title: "Multiverse — Aurora Mind OS" }] }),
+  head: () => ({ meta: [{ title: "Multiverse — LifeOS" }] }),
   component: Multiverse,
 });
 

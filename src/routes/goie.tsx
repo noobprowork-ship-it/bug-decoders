@@ -6,10 +6,11 @@ import { Globe2, Sparkles, Loader2, AlertTriangle, TrendingUp, ExternalLink } fr
 import { goie } from "@/lib/api";
 
 export const Route = createFileRoute("/goie")({
-  head: () => ({ meta: [{ title: "GOIE — Aurora Mind OS" }] }),
+  head: () => ({ meta: [{ title: "GOIE — LifeOS" }] }),
   component: Goie,
 });
 
+type Reference = { title?: string; url?: string; why?: string };
 type Opp = {
   title: string;
   description?: string;
@@ -18,10 +19,17 @@ type Opp = {
   score?: number;
   tags?: string[];
   sourceUrl?: string;
+  sourceName?: string;
+  references?: Reference[];
 };
 
 type Trend = { label: string; delta: string; horizon: string; confidence: number };
 type Trends = { headline?: string; trends?: Trend[]; insights?: string[]; actionPrompts?: string[] };
+
+function prettyHost(url?: string): string | null {
+  if (!url) return null;
+  try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return null; }
+}
 
 function Goie() {
   const [interests, setInterests] = useState("AI, design, indie products");
@@ -158,9 +166,33 @@ function Goie() {
                 </div>
               )}
               {o.sourceUrl && (
-                <a href={o.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                  Source <ExternalLink className="h-3 w-3" />
+                <a
+                  href={o.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline mb-3"
+                >
+                  {o.sourceName || prettyHost(o.sourceUrl) || "Source"} <ExternalLink className="h-3 w-3" />
                 </a>
+              )}
+              {o.references && o.references.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-white/5">
+                  <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">References</div>
+                  <ul className="space-y-1.5">
+                    {o.references.map((r, idx) => (
+                      <li key={idx} className="text-xs">
+                        {r.url ? (
+                          <a href={r.url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+                            {r.title || prettyHost(r.url) || r.url} <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          <span>{r.title}</span>
+                        )}
+                        {r.why && <div className="text-muted-foreground mt-0.5">{r.why}</div>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </GlowCard>
           ))}

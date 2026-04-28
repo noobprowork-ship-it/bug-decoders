@@ -2,11 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Shell } from "@/components/aurora/Shell";
 import { GlowCard, PageHeader, NeonButton } from "@/components/aurora/ui";
-import { Brain, Sparkles, Loader2, AlertTriangle } from "lucide-react";
+import { Brain, Sparkles, Loader2, AlertTriangle, Network } from "lucide-react";
 import { mind } from "@/lib/api";
+import { MindMap, type MindMapData } from "@/components/aurora/MindMap";
 
 export const Route = createFileRoute("/mind")({
-  head: () => ({ meta: [{ title: "Mind — Aurora Mind OS" }] }),
+  head: () => ({ meta: [{ title: "Mind — LifeOS" }] }),
   component: Mind,
 });
 
@@ -15,6 +16,7 @@ type Decoding = {
   cognitive_patterns?: string[];
   emotional_tone?: string;
   recommendations?: string[];
+  mindmap?: MindMapData;
 };
 
 type Universe = {
@@ -23,6 +25,7 @@ type Universe = {
   cognitiveBiases?: string[];
   preferredEnvironments?: string[];
   growthLevers?: string[];
+  mindmap?: MindMapData;
 };
 
 const UNIVERSE_QS: { id: string; q: string }[] = [
@@ -101,7 +104,7 @@ function Mind() {
             <div className="space-y-4">
               <div>
                 <label className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">What's on your mind?</label>
-                <textarea value={thoughts} onChange={(e) => setThoughts(e.target.value)} rows={4} placeholder="Pour out your thoughts — Aurora will find the patterns…" className="mt-2 w-full glass rounded-2xl p-4 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary resize-none" />
+                <textarea value={thoughts} onChange={(e) => setThoughts(e.target.value)} rows={4} placeholder="Pour out your thoughts — LifeOS will find the patterns and map them…" className="mt-2 w-full glass rounded-2xl p-4 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary resize-none" />
               </div>
               <div>
                 <label className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Mood (optional)</label>
@@ -114,26 +117,37 @@ function Mind() {
           </GlowCard>
 
           {decoding && (
-            <div className="grid md:grid-cols-2 gap-4">
-              <GlowCard glow="purple">
-                <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-1">Emotional tone</div>
-                <div className="font-display text-2xl font-bold text-gradient mb-4">{decoding.emotional_tone || "—"}</div>
-                <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Themes</div>
-                <div className="flex flex-wrap gap-2">
-                  {(decoding.themes || []).map((t, i) => <span key={i} className="glass rounded-full px-3 py-1 text-xs">{t}</span>)}
-                </div>
-              </GlowCard>
-              <GlowCard glow="blue">
-                <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Cognitive patterns</div>
-                <ul className="space-y-1 text-sm mb-4">
-                  {(decoding.cognitive_patterns || []).map((p, i) => <li key={i}>· {p}</li>)}
-                </ul>
-                <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Aurora suggests</div>
-                <ul className="space-y-1 text-sm">
-                  {(decoding.recommendations || []).map((r, i) => <li key={i}>→ {r}</li>)}
-                </ul>
-              </GlowCard>
-            </div>
+            <>
+              {decoding.mindmap && (
+                <GlowCard glow="purple" className="mb-4 animate-rise">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Network className="h-4 w-4 text-primary" />
+                    <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Your mind, mapped</div>
+                  </div>
+                  <MindMap data={decoding.mindmap} />
+                </GlowCard>
+              )}
+              <div className="grid md:grid-cols-2 gap-4">
+                <GlowCard glow="purple">
+                  <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-1">Emotional tone</div>
+                  <div className="font-display text-2xl font-bold text-gradient mb-4">{decoding.emotional_tone || "—"}</div>
+                  <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Themes</div>
+                  <div className="flex flex-wrap gap-2">
+                    {(decoding.themes || []).map((t, i) => <span key={i} className="glass rounded-full px-3 py-1 text-xs">{t}</span>)}
+                  </div>
+                </GlowCard>
+                <GlowCard glow="blue">
+                  <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Cognitive patterns</div>
+                  <ul className="space-y-1 text-sm mb-4">
+                    {(decoding.cognitive_patterns || []).map((p, i) => <li key={i}>· {p}</li>)}
+                  </ul>
+                  <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">LifeOS suggests</div>
+                  <ul className="space-y-1 text-sm">
+                    {(decoding.recommendations || []).map((r, i) => <li key={i}>→ {r}</li>)}
+                  </ul>
+                </GlowCard>
+              </div>
+            </>
           )}
         </>
       )}
@@ -159,7 +173,17 @@ function Mind() {
           </GlowCard>
 
           {universe && (
-            <div className="grid md:grid-cols-2 gap-4">
+            <>
+              {universe.mindmap && (
+                <GlowCard glow="purple" className="mb-4 animate-rise">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Network className="h-4 w-4 text-primary" />
+                    <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Your mind universe</div>
+                  </div>
+                  <MindMap data={universe.mindmap} />
+                </GlowCard>
+              )}
+              <div className="grid md:grid-cols-2 gap-4">
               <GlowCard glow="purple">
                 <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-1">Personality</div>
                 <div className="font-display text-xl font-bold text-gradient mb-4">{universe.personality?.type || "—"}</div>
@@ -188,7 +212,8 @@ function Mind() {
                   {(universe.growthLevers || []).map((p, i) => <li key={i}>→ {p}</li>)}
                 </ul>
               </GlowCard>
-            </div>
+              </div>
+            </>
           )}
         </>
       )}
