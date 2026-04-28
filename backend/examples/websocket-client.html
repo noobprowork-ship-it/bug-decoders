@@ -1,0 +1,77 @@
+<!--
+  Aurora — AI Voice Companion WebSocket example.
+
+  Open this file in a browser while the backend is running:
+      cd backend && npm run dev
+  Then double-click this file or serve it from any local web server.
+
+  In the Aurora frontend dev server (port 5000), the same path works through
+  the Vite proxy at  ws://localhost:5000/ws/voice
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Aurora — Voice Companion</title>
+    <style>
+      body { font: 14px system-ui, sans-serif; margin: 32px; background: #0b0e1a; color: #e6e9f2; }
+      h1 { font-size: 18px; }
+      input, button, textarea { font: inherit; padding: 8px; border-radius: 6px; border: 1px solid #2a2f45; background: #131830; color: #e6e9f2; }
+      button { cursor: pointer; }
+      #log { white-space: pre-wrap; background: #0a0d1a; border: 1px solid #1f243a; padding: 12px; border-radius: 8px; height: 320px; overflow: auto; }
+      .row { display: flex; gap: 8px; margin: 8px 0; }
+    </style>
+  </head>
+  <body>
+    <h1>Aurora — Voice Companion (WebSocket streaming demo)</h1>
+    <div class="row">
+      <input id="url" style="flex:1" value="ws://localhost:3001/ws/voice" />
+      <input id="token" style="flex:1" placeholder="Optional JWT (Bearer token)" />
+      <button id="connect">Connect</button>
+    </div>
+    <div class="row">
+      <input id="msg" style="flex:1" placeholder="Type a message and press Enter" />
+      <button id="send">Send</button>
+      <button id="ping">Ping</button>
+    </div>
+    <pre id="log"></pre>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const log = (line) => { $("log").textContent += line + "\n"; $("log").scrollTop = 1e9; };
+      let socket = null;
+
+      $("connect").onclick = () => {
+        if (socket) socket.close();
+        socket = new WebSocket($("url").value);
+        socket.onopen = () => {
+          log("[open] connected");
+          const t = $("token").value.trim();
+          if (t) socket.send(JSON.stringify({ type: "auth", token: t }));
+        };
+        socket.onmessage = (e) => {
+          const m = JSON.parse(e.data);
+          if (m.type === "stream-chunk") {
+            $("log").textContent += m.text;
+            $("log").scrollTop = 1e9;
+          } else {
+            log("[" + m.type + "] " + (m.message || m.text || JSON.stringify(m)));
+          }
+        };
+        socket.onclose = () => log("[close] disconnected");
+        socket.onerror = (e) => log("[error] " + (e.message || "ws error"));
+      };
+
+      $("send").onclick = () => {
+        if (!socket || socket.readyState !== 1) return log("[send] not connected");
+        const text = $("msg").value;
+        if (!text) return;
+        log("\n→ " + text + "\n← ");
+        socket.send(JSON.stringify({ type: "chat", text }));
+        $("msg").value = "";
+      };
+      $("msg").addEventListener("keydown", (e) => { if (e.key === "Enter") $("send").click(); });
+      $("ping").onclick = () => socket?.send(JSON.stringify({ type: "ping" }));
+    </script>
+  </body>
+</html>

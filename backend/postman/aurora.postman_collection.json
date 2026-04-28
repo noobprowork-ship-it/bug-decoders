@@ -1,0 +1,290 @@
+{
+  "info": {
+    "name": "Aurora Mind OS — Backend",
+    "_postman_id": "aurora-mind-os-backend",
+    "description": "All 13 features of the Aurora Mind OS backend API. Set the `baseUrl` and `token` collection variables. After /auth/login, copy the returned token into the `token` variable.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001" },
+    { "key": "token", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        { "name": "GET /api/health", "request": { "method": "GET", "url": "{{baseUrl}}/api/health" } }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /api/auth/register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Amit\",\n  \"email\": \"amit@example.com\",\n  \"password\": \"AuroraTest!42\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"amit@example.com\",\n  \"password\": \"AuroraTest!42\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/voice-login",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/voice-login",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "email", "value": "amit@example.com", "type": "text" },
+                { "key": "audio", "type": "file", "src": [] }
+              ]
+            }
+          }
+        },
+        { "name": "GET /api/auth/me", "request": { "method": "GET", "url": "{{baseUrl}}/api/auth/me" } }
+      ]
+    },
+    {
+      "name": "AI Chat",
+      "item": [
+        {
+          "name": "POST /api/ai/chat",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/ai/chat",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [{ \"role\": \"user\", \"content\": \"What should I focus on this week?\" }]\n}"
+            }
+          }
+        },
+        { "name": "GET /api/ai/sessions", "request": { "method": "GET", "url": "{{baseUrl}}/api/ai/sessions" } }
+      ]
+    },
+    {
+      "name": "Command Center",
+      "item": [
+        {
+          "name": "POST /api/command-center/plan",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/command-center/plan",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goals\": [\"Ship Aurora MVP\", \"Run 5km\"],\n  \"currentChallenges\": [\"Sleep\"],\n  \"timeAvailableHoursPerDay\": 4,\n  \"mood\": \"focused\"\n}"
+            }
+          }
+        },
+        { "name": "GET /api/command-center/latest", "request": { "method": "GET", "url": "{{baseUrl}}/api/command-center/latest" } }
+      ]
+    },
+    {
+      "name": "Reality Architect",
+      "item": [
+        {
+          "name": "POST /api/reality/plan-week",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/reality/plan-week",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vision\": \"Launch Aurora MVP\",\n  \"constraints\": [\"only 2h/day\"],\n  \"currentHabits\": [\"morning workout\"]\n}"
+            }
+          }
+        },
+        { "name": "GET /api/reality/latest", "request": { "method": "GET", "url": "{{baseUrl}}/api/reality/latest" } }
+      ]
+    },
+    {
+      "name": "Identity",
+      "item": [
+        { "name": "GET /api/identity", "request": { "method": "GET", "url": "{{baseUrl}}/api/identity" } },
+        {
+          "name": "POST /api/identity/insights",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/identity/insights",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"traits\": [\"systems thinker\", \"introvert\"],\n  \"goals\": [\"build a calm life\"]\n}"
+            }
+          }
+        },
+        { "name": "GET /api/identity/evolution", "request": { "method": "GET", "url": "{{baseUrl}}/api/identity/evolution" } }
+      ]
+    },
+    {
+      "name": "Multiverse",
+      "item": [
+        {
+          "name": "POST /api/multiverse/simulate",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/multiverse/simulate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"Should I move to Tokyo?\",\n  \"context\": \"I'm a remote engineer\",\n  \"branches\": 3,\n  \"horizonYears\": 5\n}"
+            }
+          }
+        },
+        { "name": "GET /api/multiverse", "request": { "method": "GET", "url": "{{baseUrl}}/api/multiverse" } }
+      ]
+    },
+    {
+      "name": "Cinematic",
+      "item": [
+        {
+          "name": "POST /api/cinematic/generate",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/cinematic/generate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"theme\": \"future self at age 40\",\n  \"scenes\": 5,\n  \"tone\": \"hopeful\"\n}"
+            }
+          }
+        },
+        { "name": "GET /api/cinematic", "request": { "method": "GET", "url": "{{baseUrl}}/api/cinematic" } }
+      ]
+    },
+    {
+      "name": "Mind",
+      "item": [
+        {
+          "name": "POST /api/mind/decode",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/mind/decode",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"thoughts\": \"I keep planning but never shipping…\",\n  \"mood\": \"anxious\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/mind/explore",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/mind/explore",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"responses\": {\n    \"q1\": \"I prefer quiet mornings\",\n    \"q2\": \"I think in systems\"\n  }\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "GOIE",
+      "item": [
+        { "name": "GET /api/goie", "request": { "method": "GET", "url": "{{baseUrl}}/api/goie" } },
+        {
+          "name": "POST /api/goie/generate",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/goie/generate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interests\": [\"AI\", \"product\"],\n  \"region\": \"global\",\n  \"count\": 5\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/goie/trends",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/goie/trends",
+            "body": { "mode": "raw", "raw": "{\n  \"focus\": \"AI tooling\",\n  \"region\": \"EMEA\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Decision",
+      "item": [
+        {
+          "name": "POST /api/decision/evaluate",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/decision/evaluate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Quit my job to build Aurora?\",\n  \"options\": [\"Quit now\", \"Wait 6 months\"],\n  \"criteria\": [\"financial safety\", \"momentum\"]\n}"
+            }
+          }
+        },
+        { "name": "GET /api/decision", "request": { "method": "GET", "url": "{{baseUrl}}/api/decision" } }
+      ]
+    },
+    {
+      "name": "Activity",
+      "item": [
+        {
+          "name": "POST /api/activity/analyze",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/activity/analyze",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activities\": [\n    { \"name\": \"deep work\", \"hoursPerWeek\": 18 },\n    { \"name\": \"gaming\", \"hoursPerWeek\": 8 }\n  ],\n  \"skills\": [\"writing\", \"systems design\"],\n  \"ambitions\": [\"ship Aurora MVP\"]\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Onboarding",
+      "item": [
+        { "name": "POST /api/onboarding/start", "request": { "method": "POST", "url": "{{baseUrl}}/api/onboarding/start" } },
+        {
+          "name": "POST /api/onboarding/answer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/onboarding/answer",
+            "body": { "mode": "raw", "raw": "{\n  \"questionId\": \"name\",\n  \"answer\": \"Amit\"\n}" }
+          }
+        },
+        { "name": "GET /api/onboarding/profile", "request": { "method": "GET", "url": "{{baseUrl}}/api/onboarding/profile" } }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        { "name": "GET /api/dashboard", "request": { "method": "GET", "url": "{{baseUrl}}/api/dashboard" } }
+      ]
+    }
+  ]
+}

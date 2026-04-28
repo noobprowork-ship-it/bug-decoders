@@ -7,7 +7,13 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "node tests/runAll.js",
+    "test:voice": "node tests/test-voice-login.js",
+    "test:chat": "node tests/test-ai-chat.js",
+    "test:goie": "node tests/test-goie.js",
+    "test:multiverse": "node tests/test-multiverse.js",
+    "test:cinematic": "node tests/test-cinematic.js"
   },
   "dependencies": {
     "axios": "^1.7.7",

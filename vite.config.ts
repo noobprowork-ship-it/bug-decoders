@@ -6,6 +6,8 @@
 // You can pass additional config via defineConfig({ vite: { ... } }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3001";
+
 export default defineConfig({
   vite: {
     server: {
@@ -13,6 +15,17 @@ export default defineConfig({
       port: 5000,
       strictPort: true,
       allowedHosts: true,
+      proxy: {
+        "/api": {
+          target: BACKEND_URL,
+          changeOrigin: true,
+        },
+        "/ws/voice": {
+          target: BACKEND_URL.replace(/^http/, "ws"),
+          ws: true,
+          changeOrigin: true,
+        },
+      },
     },
   },
 });

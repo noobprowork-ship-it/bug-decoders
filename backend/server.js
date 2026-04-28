@@ -25,7 +25,22 @@ import dashboardRoutes from "./src/routes/dashboard.js";
 
 const app = express();
 
-app.use(cors({ origin: true, credentials: true }));
+const FRONTEND_URL = process.env.FRONTEND_URL || "";
+const ALLOWED_ORIGINS = FRONTEND_URL
+  ? FRONTEND_URL.split(",").map((s) => s.trim()).filter(Boolean)
+  : null;
+
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (!ALLOWED_ORIGINS) return cb(null, true);
+      if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+      return cb(new Error(`CORS: origin not allowed: ${origin}`));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));

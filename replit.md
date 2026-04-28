@@ -30,14 +30,27 @@ A TanStack Start (React 19 + Vite 7) single-page/SSR application themed as "Auro
 A separate Node + Express + MongoDB API lives in `backend/` so it doesn't collide with the frontend's `/src`.
 
 - **Entry:** `backend/server.js` (Express + WebSocket on the same HTTP server)
-- **Port:** `3001` (configurable via `PORT`); host `localhost`
+- **Port:** `3001` (configurable via `PORT`); host `0.0.0.0`
+- **Workflow:** `Backend API` runs `cd backend && npm run dev` (console output, port 3001).
 - **Auth:** JWT via `Authorization: Bearer <token>` (`backend/src/utils/verifyToken.js`)
 - **Voice login:** Whisper API transcription via `backend/src/utils/voiceLogin.js` (multer in-memory upload)
 - **AI:** OpenAI client in `backend/src/config/openai.js` (chat for AI features, voice companion over WebSocket at `/ws/voice`)
-- **Models:** `User`, `Session`, `Opportunity` (Mongoose)
-- **Routes mounted under `/api/*`:** `auth`, `ai`, `goie`, `multiverse`, `identity`, `mind`, `cinematic`, `decision`
-- **Run:** `cd backend && npm install && npm run dev`
-- **Env:** see `backend/.env.example` (`MONGODB_URI`, `JWT_SECRET`, `OPENAI_API_KEY`, …). The server boots even when env vars are missing — it logs warnings and AI/DB calls fail with clear errors.
+- **Models:** `User`, `Session`, `Opportunity` (Mongoose). `bufferTimeoutMS=1500` so calls fail fast when no DB is configured.
+- **CORS:** `FRONTEND_URL` env var (comma-separated origins). When unset, all origins are allowed (dev default).
+- **All 13 features mounted under `/api/*`:**
+  `auth` (incl. `voice-login`), `ai/chat`, `command-center`, `reality`, `identity` (incl. `evolution`),
+  `multiverse`, `cinematic`, `mind` (incl. `explore`), `goie` (incl. `generate`, `trends`),
+  `decision`, `activity`, `onboarding`, `dashboard`, plus WS `/ws/voice`.
+- **Env:** copy `backend/.env.example` → `backend/.env`. The server boots even when `MONGODB_URI` / `OPENAI_API_KEY` are missing — it logs warnings and AI/DB calls fail with clear, structured errors.
+
+### Frontend ↔ backend wiring
+- `vite.config.ts` proxies `/api/*` and `/ws/voice` from port 5000 → `BACKEND_URL` (default `http://localhost:3001`). The frontend uses **relative URLs** so the same code works in dev, behind the Replit iframe proxy, and in production.
+- `src/lib/api.ts` is a typed fetch client covering every feature, plus `openVoiceCompanion()` for the streaming WebSocket.
+
+### Tests, Postman, WebSocket demo
+- **Test scripts:** `backend/tests/test-{voice-login,ai-chat,goie,multiverse,cinematic}.js`. Run all with `cd backend && npm test`. They wire-test each route, validate auth/400/401 contracts, and SKIP DB-backed assertions cleanly when `MONGODB_URI` is not set.
+- **Postman collection:** `backend/postman/aurora.postman_collection.json` — import into Postman, set `baseUrl` and `token` collection variables.
+- **WebSocket demo:** open `backend/examples/websocket-client.html` in a browser to chat with the streaming voice companion.
 
 ## Notes
 - The Lovable Vite wrapper auto-includes tanstackStart, viteReact, tailwindcss, tsConfigPaths, cloudflare (build only), componentTagger (dev only), the `@` path alias, React/TanStack dedupe, and error logger plugins. Do not add these manually.

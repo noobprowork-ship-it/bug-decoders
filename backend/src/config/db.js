@@ -1,5 +1,9 @@
 import mongoose from "mongoose";
 
+// Fail fast on Mongoose calls when no DB connection has been established.
+// Default buffering timeout is 10s which makes test suites + error UIs hang.
+mongoose.set("bufferTimeoutMS", 1500);
+
 export async function connectDB() {
   const uri = process.env.MONGODB_URI;
   if (!uri) {
