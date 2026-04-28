@@ -11,6 +11,7 @@ export type StoredUser = {
   name?: string;
   email?: string;
   tier?: string;
+  photoUrl?: string;
 };
 
 export function getStoredUser(): StoredUser | null {

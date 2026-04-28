@@ -107,60 +107,114 @@ export async function voiceLogin(req, res) {
 }
 
 /**
- * POST /api/auth/google-demo
+ * POST /api/auth/google
  *
- * "Continue with Google" — pragmatic demo flow.
+ * "Continue with Google" — collects the user's real Google profile data
+ * (name + email + optional photo URL + optional bio) and creates or reuses
+ * a real LifeOS account. We persist into Postgres (when DATABASE_URL is set)
+ * so the user's profile, history and bio survive restarts. If Mongo is
+ * connected we also keep the legacy User document in sync.
  *
- * Production Google OAuth requires Google Cloud OAuth client credentials,
- * which aren't configured in this environment. To keep the button useful
- * and the UX functional, this endpoint accepts a display name and creates
- * (or reuses) a deterministic LifeOS account with a `@lifeos.demo` email.
- * It returns the same JWT shape as the other login flows so the frontend
- * can treat it identically.
+ * To wire up real Google One-Tap on the client, send the verified email +
+ * name + picture from the Google credential to this endpoint.
  *
- * Body: { name?: string }
+ * Body: { email: string, name?: string, photoUrl?: string, bio?: object }
  */
-export async function demoGoogleLogin(req, res) {
+export async function googleSignIn(req, res) {
   try {
+    const email = String(req.body?.email || "").trim().toLowerCase();
     const rawName = (req.body?.name || "").toString().trim();
-    const handle = (rawName || "explorer")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 24) || "explorer";
-    const email = `${handle}-${Date.now().toString(36).slice(-4)}@lifeos.demo`;
+    const photoUrl = (req.body?.photoUrl || "").toString().trim() || null;
+    const bio = req.body?.bio && typeof req.body.bio === "object" ? req.body.bio : {};
 
-    let user = null;
-    try {
-      user = await User.create({
-        name: rawName || "LifeOS Explorer",
-        email,
-        tier: "free",
-      });
-    } catch (dbErr) {
-      // DB unavailable — return a stateless guest token so the UI still works.
-      const token = signToken({ id: "guest-google", email });
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      return res.status(400).json({ error: "A valid email address is required." });
+    }
+
+    // ---- Postgres path (preferred — DATABASE_URL is set on Replit) ----
+    const { isPgReady, pgQuery } = await import("../config/postgres.js");
+    if (isPgReady()) {
+      const id = `g_${Buffer.from(email).toString("base64url").slice(0, 22)}`;
+      const existing = await pgQuery(
+        `SELECT id, email, name, photo_url, bio FROM lifeos_users WHERE email = $1`,
+        [email]
+      );
+      let row;
+      if (existing.rows.length === 0) {
+        const inserted = await pgQuery(
+          `INSERT INTO lifeos_users (id, email, name, photo_url, provider, bio, last_login_at)
+           VALUES ($1, $2, $3, $4, 'google', $5::jsonb, NOW())
+           RETURNING id, email, name, photo_url, bio`,
+          [id, email, rawName || email.split("@")[0], photoUrl, JSON.stringify(bio)]
+        );
+        row = inserted.rows[0];
+      } else {
+        const merged = { ...(existing.rows[0].bio || {}), ...bio };
+        const updated = await pgQuery(
+          `UPDATE lifeos_users
+              SET name = COALESCE(NULLIF($2, ''), name),
+                  photo_url = COALESCE($3, photo_url),
+                  bio = $4::jsonb,
+                  last_login_at = NOW()
+            WHERE email = $1
+            RETURNING id, email, name, photo_url, bio`,
+          [email, rawName, photoUrl, JSON.stringify(merged)]
+        );
+        row = updated.rows[0];
+      }
+
+      const token = signToken({ id: row.id, email: row.email });
       return res.json({
         token,
-        user: { id: "guest-google", name: rawName || "LifeOS Explorer", email, tier: "guest" },
-        notice: "Demo Google sign-in (no database connected — session is in-memory).",
+        user: {
+          id: row.id,
+          email: row.email,
+          name: row.name,
+          photoUrl: row.photo_url,
+          bio: row.bio,
+          tier: "free",
+        },
       });
     }
 
-    user.lastLoginAt = new Date();
-    await user.save().catch(() => {});
-
-    const token = signToken({ id: user._id.toString(), email: user.email });
-    return res.json({
-      token,
-      user: { id: user._id, name: user.name, email: user.email, tier: user.tier },
-      notice: "Demo Google sign-in. For real OAuth, connect a Google OAuth client.",
-    });
+    // ---- Mongo path (legacy) ----
+    let user = null;
+    try {
+      user = await User.findOne({ email });
+      if (!user) {
+        user = await User.create({
+          name: rawName || email.split("@")[0],
+          email,
+          tier: "free",
+          settings: { google: { photoUrl, bio } },
+        });
+      } else {
+        if (rawName) user.name = rawName;
+        user.lastLoginAt = new Date();
+        await user.save().catch(() => {});
+      }
+      const token = signToken({ id: user._id.toString(), email: user.email });
+      return res.json({
+        token,
+        user: { id: user._id, name: user.name, email: user.email, photoUrl, bio, tier: user.tier },
+      });
+    } catch (dbErr) {
+      // No DB — issue a guest token tied to the real email.
+      const token = signToken({ id: `guest_${email}`, email });
+      return res.json({
+        token,
+        user: { id: `guest_${email}`, name: rawName || email.split("@")[0], email, photoUrl, bio, tier: "guest" },
+        notice: "Connected (no database — your data lives in this session).",
+      });
+    }
   } catch (err) {
-    console.error("[authController.demoGoogleLogin]", err);
+    console.error("[authController.googleSignIn]", err);
     return res.status(500).json({ error: err.message });
   }
 }
+
+// Legacy alias so the old `/google-demo` endpoint keeps working.
+export const demoGoogleLogin = googleSignIn;
 
 export async function me(req, res) {
   try {

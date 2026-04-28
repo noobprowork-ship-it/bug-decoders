@@ -112,29 +112,30 @@
    neon primary/accent colors that LifeOS is known for. Glass surfaces
    become subtle white panels with a faint cyan/violet tint. */
 .light {
-  --background: oklch(0.98 0.005 240);
-  --foreground: oklch(0.18 0.04 270);
+  /* Beautiful soft white — clean snow palette with a faint cool tint */
+  --background: oklch(0.995 0.003 240);
+  --foreground: oklch(0.22 0.04 270);
 
-  --card: oklch(1 0 0 / 0.7);
-  --card-foreground: oklch(0.18 0.04 270);
+  --card: oklch(1 0 0 / 0.85);
+  --card-foreground: oklch(0.22 0.04 270);
 
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.04 270);
+  --popover-foreground: oklch(0.22 0.04 270);
 
   --primary: oklch(0.55 0.2 245);
-  --primary-foreground: oklch(0.98 0.005 240);
+  --primary-foreground: oklch(0.99 0.003 240);
 
-  --secondary: oklch(0.94 0.01 250);
-  --secondary-foreground: oklch(0.18 0.04 270);
+  --secondary: oklch(0.96 0.008 250);
+  --secondary-foreground: oklch(0.22 0.04 270);
 
-  --muted: oklch(0.94 0.01 250);
-  --muted-foreground: oklch(0.45 0.04 260);
+  --muted: oklch(0.96 0.008 250);
+  --muted-foreground: oklch(0.42 0.04 260);
 
   --accent: oklch(0.6 0.22 320);
-  --accent-foreground: oklch(0.98 0.005 240);
+  --accent-foreground: oklch(0.99 0.003 240);
 
-  --border: oklch(0.18 0.04 270 / 0.1);
-  --input: oklch(0.18 0.04 270 / 0.1);
+  --border: oklch(0.22 0.04 270 / 0.08);
+  --input: oklch(0.22 0.04 270 / 0.08);
   --ring: oklch(0.55 0.2 245);
 
   --neon: oklch(0.55 0.2 245);
@@ -142,26 +143,50 @@
   --electric: oklch(0.55 0.22 295);
 
   --gradient-aurora: linear-gradient(135deg, oklch(0.55 0.2 245) 0%, oklch(0.55 0.22 295) 50%, oklch(0.6 0.22 320) 100%);
-  --gradient-glow: radial-gradient(circle at 50% 0%, oklch(0.55 0.2 245 / 0.18), transparent 60%);
+  --gradient-glow: radial-gradient(circle at 50% 0%, oklch(0.55 0.2 245 / 0.12), transparent 60%);
 
-  --shadow-neon: 0 0 24px oklch(0.55 0.2 245 / 0.25);
-  --shadow-pink: 0 0 24px oklch(0.6 0.22 320 / 0.25);
-  --shadow-soft: 0 20px 60px -20px oklch(0.18 0.04 270 / 0.18);
+  --shadow-neon: 0 6px 24px oklch(0.55 0.2 245 / 0.18);
+  --shadow-pink: 0 6px 24px oklch(0.6 0.22 320 / 0.18);
+  --shadow-soft: 0 20px 60px -24px oklch(0.22 0.04 270 / 0.14);
 
   --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.18 0.04 270);
-  --sidebar-border: oklch(0.18 0.04 270 / 0.1);
+  --sidebar-foreground: oklch(0.22 0.04 270);
+  --sidebar-border: oklch(0.22 0.04 270 / 0.08);
 }
 
-.light .glass,
-.light .glass-strong {
-  background-color: oklch(1 0 0 / 0.7) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-color: oklch(0.18 0.04 270 / 0.08);
+/* Light-mode body: pure soft-white with a hint of aurora */
+.light body {
+  background-image:
+    radial-gradient(ellipse at top, oklch(0.78 0.18 230 / 0.10), transparent 60%),
+    radial-gradient(ellipse at bottom right, oklch(0.7 0.22 320 / 0.08), transparent 55%),
+    radial-gradient(ellipse at bottom left, oklch(0.7 0.22 295 / 0.06), transparent 55%) !important;
+}
+
+.light .glass {
+  background: oklch(1 0 0 / 0.72) !important;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid oklch(0.22 0.04 270 / 0.07) !important;
+  box-shadow: 0 1px 0 oklch(1 0 0 / 0.6) inset, 0 6px 24px -16px oklch(0.22 0.04 270 / 0.14);
 }
 .light .glass-strong {
-  background-color: oklch(1 0 0 / 0.85) !important;
+  background: oklch(1 0 0 / 0.92) !important;
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid oklch(0.22 0.04 270 / 0.08) !important;
+  box-shadow: 0 1px 0 oklch(1 0 0 / 0.7) inset, 0 24px 60px -28px oklch(0.22 0.04 270 / 0.18);
+}
+.light .grid-bg {
+  background-image:
+    linear-gradient(oklch(0.22 0.04 270 / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.22 0.04 270 / 0.04) 1px, transparent 1px) !important;
+}
+.light .glow-ring {
+  box-shadow: 0 0 0 1px oklch(0.55 0.2 245 / 0.25), 0 0 24px oklch(0.55 0.2 245 / 0.15) !important;
+}
+/* When buttons use bg-white/10 for hover on dark, soften for light too */
+.light .hover\:bg-white\/10:hover {
+  background-color: oklch(0.22 0.04 270 / 0.06) !important;
 }
 
 @layer base {

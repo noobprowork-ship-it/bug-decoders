@@ -279,22 +279,36 @@ function VoicePanel({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-/* ---------- Google (demo flow) ---------- */
+/* ---------- Google (real account, real bio) ---------- */
 function GooglePanel({ onSuccess }: { onSuccess: () => void }) {
+  const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [photoUrl, setPhotoUrl] = useState("");
+  const [bioText, setBioText] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true); setErr(null);
+    setErr(null);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
+      setErr("Please enter your real Google email so we can link your data.");
+      return;
+    }
+    setLoading(true);
     try {
-      const resp = await auth.googleDemo({ name: name.trim() || undefined });
+      const resp = await auth.google({
+        email: email.trim(),
+        name: name.trim() || undefined,
+        photoUrl: photoUrl.trim() || undefined,
+        bio: bioText.trim() ? { about: bioText.trim() } : undefined,
+      });
       setToken(resp.token);
       setStoredUser({
         id: resp.user?.id,
         email: resp.user?.email,
-        name: resp.user?.name || (name.trim() || undefined),
+        name: resp.user?.name || name.trim() || undefined,
+        photoUrl: resp.user?.photoUrl || photoUrl.trim() || undefined,
         tier: resp.user?.tier,
       });
       onSuccess();
@@ -313,22 +327,45 @@ function GooglePanel({ onSuccess }: { onSuccess: () => void }) {
         </div>
         <div>
           <h2 className="font-display text-xl font-bold">Continue with Google</h2>
-          <p className="text-xs text-muted-foreground">One-tap LifeOS access.</p>
+          <p className="text-xs text-muted-foreground">Real account · saved across sessions.</p>
         </div>
       </div>
 
       <div className="text-xs text-muted-foreground mb-4 glass rounded-xl p-3 leading-relaxed">
-        Real Google OAuth requires Google Cloud credentials. For now this creates a personalised
-        LifeOS workspace instantly — your data stays in this session.
+        Sign in with your real Google email — we'll create or reload your LifeOS profile and
+        keep your bio, history and assistant memory in your private database.
       </div>
 
       <form onSubmit={submit} className="space-y-3">
         <input
+          type="email"
+          required
+          autoComplete="email"
+          placeholder="you@gmail.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary"
+        />
+        <input
           type="text"
-          placeholder="Your name (optional)"
+          placeholder="Full name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary"
+        />
+        <input
+          type="url"
+          placeholder="Profile photo URL (optional)"
+          value={photoUrl}
+          onChange={(e) => setPhotoUrl(e.target.value)}
+          className="w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary"
+        />
+        <textarea
+          placeholder="A short bio so Aurora gets you (optional)"
+          value={bioText}
+          onChange={(e) => setBioText(e.target.value)}
+          rows={2}
+          className="w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary resize-none"
         />
         {err && (
           <div className="flex items-start gap-2 text-xs text-[oklch(0.7_0.22_320)]">
@@ -342,7 +379,7 @@ function GooglePanel({ onSuccess }: { onSuccess: () => void }) {
           className="w-full bg-aurora text-primary-foreground rounded-2xl py-3.5 shadow-neon hover:scale-[1.01] transition font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-60"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChromeIcon className="h-4 w-4" />}
-          Continue
+          Continue with Google
         </button>
       </form>
     </div>

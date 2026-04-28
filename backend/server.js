@@ -13,6 +13,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 import { connectDB } from "./src/config/db.js";
+import { initPostgres } from "./src/config/postgres.js";
+import { ensureSession, appendMessage } from "./src/utils/sessions.js";
 import { openai } from "./src/config/openai.js";
 import { tryAI, isAIError, aiErrorPayload } from "./src/utils/ai.js";
 import { verifyTokenString } from "./src/utils/verifyToken.js";
@@ -31,6 +33,8 @@ import activityRoutes from "./src/routes/activity.js";
 import onboardingRoutes from "./src/routes/onboarding.js";
 import dashboardRoutes from "./src/routes/dashboard.js";
 import exploreRoutes from "./src/routes/explore.js";
+import newsRoutes from "./src/routes/news.js";
+import sessionsRoutes from "./src/routes/sessions.js";
 
 const app = express();
 
@@ -73,6 +77,8 @@ app.use("/api/activity", activityRoutes);
 app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/explore", exploreRoutes);
+app.use("/api/news", newsRoutes);
+app.use("/api/sessions", sessionsRoutes);
 
 const CLIENT_DIST = path.resolve(__dirname, "..", "dist", "client");
 const SERVER_DIST = path.resolve(__dirname, "..", "dist", "server");
@@ -221,11 +227,21 @@ wss.on("connection", (ws) => {
           {
             role: "system",
             content:
-              "You are Aurora — a calm, insightful AI life companion. Reply in short, human, voice-friendly sentences.",
+              "You are Aurora — a calm, insightful AI life companion (JARVIS-like). " +
+              "Reply in short, warm, voice-friendly sentences. Be direct and helpful.",
           },
           ...history.map((m) => ({ role: m.role, content: m.content })),
           { role: "user", content: msg.text },
         ];
+
+        // Persist the user message + ensure a session exists
+        const sessionId = await ensureSession({
+          sessionId: msg.sessionId,
+          userId: userCtx?.id,
+          title: msg.text.slice(0, 60),
+        });
+        appendMessage({ sessionId, role: "user", content: msg.text, userId: userCtx?.id }).catch(() => {});
+        ws.send(JSON.stringify({ type: "session", sessionId }));
 
         ws.send(JSON.stringify({ type: "stream-start" }));
 
@@ -257,6 +273,9 @@ wss.on("connection", (ws) => {
         }
 
         ws.send(JSON.stringify({ type: "stream-end", text: full }));
+        if (full) {
+          appendMessage({ sessionId, role: "assistant", content: full, userId: userCtx?.id }).catch(() => {});
+        }
         return;
       }
 
@@ -272,7 +291,10 @@ wss.on("connection", (ws) => {
 
 (async () => {
   try {
-    await connectDB();
+    await Promise.all([
+      connectDB().catch((e) => console.warn("[server] mongo init warn:", e.message)),
+      initPostgres().catch((e) => console.warn("[server] postgres init warn:", e.message)),
+    ]);
     server.listen(PORT, HOST, () => {
       console.log(`[server] Aurora backend listening on http://${HOST}:${PORT}`);
       console.log(`[server] WebSocket voice channel at ws://${HOST}:${PORT}/ws/voice`);

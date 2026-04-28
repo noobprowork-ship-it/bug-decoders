@@ -142,7 +142,35 @@ export const auth = {
       json(body),
       { auth: false }
     ),
+  google: (body: { email: string; name?: string; photoUrl?: string; bio?: Record<string, unknown> }) =>
+    request<{
+      token: string;
+      user: { id: string; name?: string; email: string; photoUrl?: string; bio?: Record<string, unknown>; tier: string };
+      notice?: string;
+    }>("/api/auth/google", json(body), { auth: false }),
   me: () => request<{ user: unknown }>("/api/auth/me"),
+};
+
+// ---------------- Current affairs / news ----------------
+export const news = {
+  ask: (body: { query: string; topic?: string }) =>
+    request<{ answer: string; sources: { title: string; url: string }[]; mode: string; notice?: string }>(
+      "/api/news",
+      json(body)
+    ),
+};
+
+// ---------------- Persistent chat sessions (Postgres-backed) ----------------
+export const persistedSessions = {
+  list: () =>
+    request<{
+      sessions: { id: string; title: string | null; created_at: string; updated_at: string; last_message: string | null; message_count: number }[];
+    }>("/api/sessions"),
+  get: (id: string) =>
+    request<{
+      session: { id: string; title: string | null; created_at: string; updated_at: string };
+      messages: { role: string; content: string; created_at: string }[];
+    }>(`/api/sessions/${encodeURIComponent(id)}`),
 };
 
 /** Transcribe audio (used by floating AI assistant for voice input). */
@@ -286,6 +314,7 @@ export const dashboard = {
 export type VoiceMessage =
   | { type: "auth-ok"; userId: string }
   | { type: "pong"; time: number }
+  | { type: "session"; sessionId: string }
   | { type: "stream-start" }
   | { type: "stream-chunk"; text: string }
   | { type: "stream-end"; text: string }
@@ -313,8 +342,11 @@ export function openVoiceCompanion(opts: {
   });
   return {
     socket,
-    sendChat: (text: string, history: { role: string; content: string }[] = []) =>
-      socket.send(JSON.stringify({ type: "chat", text, history })),
+    sendChat: (
+      text: string,
+      history: { role: string; content: string }[] = [],
+      sessionId: string | null = null,
+    ) => socket.send(JSON.stringify({ type: "chat", text, history, sessionId })),
     ping: () => socket.send(JSON.stringify({ type: "ping" })),
     close: () => socket.close(),
   };

@@ -53,11 +53,14 @@ export const Route = createRootRoute({
   notFoundComponent: NotFoundComponent,
 });
 
+const THEME_BOOT = `(function(){try{var t=localStorage.getItem('lifeos.theme');var c=t==='dark'?'dark':'light';document.documentElement.classList.add(c);}catch(e){document.documentElement.classList.add('light');}})();`;
+
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
       </head>
       <body>
         {children}

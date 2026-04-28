@@ -1,6 +1,9 @@
 /**
  * Theme management — light / dark mode with localStorage persistence
  * and a custom event so listeners can react to changes.
+ *
+ * Default: LIGHT (a clean white palette). Users can flip to dark via the
+ * ThemeToggle in the top-right; their choice is persisted.
  */
 
 const KEY = "lifeos.theme";
@@ -8,9 +11,9 @@ const KEY = "lifeos.theme";
 export type Theme = "dark" | "light";
 
 export function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   const raw = window.localStorage.getItem(KEY);
-  return raw === "light" ? "light" : "dark";
+  return raw === "dark" ? "dark" : "light";
 }
 
 export function setTheme(theme: Theme) {
