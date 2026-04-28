@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VoiceRouteImport } from './routes/voice'
 import { Route as MultiverseRouteImport } from './routes/multiverse'
 import { Route as MindRouteImport } from './routes/mind'
 import { Route as IdentityRouteImport } from './routes/identity'
@@ -18,6 +19,11 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CinematicRouteImport } from './routes/cinematic'
 import { Route as IndexRouteImport } from './routes/index'
 
+const VoiceRoute = VoiceRouteImport.update({
+  id: '/voice',
+  path: '/voice',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MultiverseRoute = MultiverseRouteImport.update({
   id: '/multiverse',
   path: '/multiverse',
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/identity': typeof IdentityRoute
   '/mind': typeof MindRoute
   '/multiverse': typeof MultiverseRoute
+  '/voice': typeof VoiceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByTo {
   '/identity': typeof IdentityRoute
   '/mind': typeof MindRoute
   '/multiverse': typeof MultiverseRoute
+  '/voice': typeof VoiceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,6 +97,7 @@ export interface FileRoutesById {
   '/identity': typeof IdentityRoute
   '/mind': typeof MindRoute
   '/multiverse': typeof MultiverseRoute
+  '/voice': typeof VoiceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
     | '/identity'
     | '/mind'
     | '/multiverse'
+    | '/voice'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/identity'
     | '/mind'
     | '/multiverse'
+    | '/voice'
   id:
     | '__root__'
     | '/'
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '/identity'
     | '/mind'
     | '/multiverse'
+    | '/voice'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -132,10 +144,18 @@ export interface RootRouteChildren {
   IdentityRoute: typeof IdentityRoute
   MindRoute: typeof MindRoute
   MultiverseRoute: typeof MultiverseRoute
+  VoiceRoute: typeof VoiceRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/voice': {
+      id: '/voice'
+      path: '/voice'
+      fullPath: '/voice'
+      preLoaderRoute: typeof VoiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/multiverse': {
       id: '/multiverse'
       path: '/multiverse'
@@ -204,6 +224,7 @@ const rootRouteChildren: RootRouteChildren = {
   IdentityRoute: IdentityRoute,
   MindRoute: MindRoute,
   MultiverseRoute: MultiverseRoute,
+  VoiceRoute: VoiceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
