@@ -3,6 +3,7 @@ import Session from "../models/Session.js";
 import { openai } from "../config/openai.js";
 import { requireFields, safeJSON, asArray } from "../utils/validate.js";
 import { tryDB } from "../utils/db.js";
+import { tryAI } from "../utils/ai.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 
@@ -28,30 +29,32 @@ export async function updateIdentity(req, res) {
   return res.json({ identity: user?.identityProfile || updates });
 }
 
-export async function generateIdentityInsights(req, res) {
+export async function generateIdentityInsights(req, res, next) {
   try {
     if (!requireFields(req.body, ["traits"], res)) return;
     const traits = asArray(req.body.traits);
     const goals = asArray(req.body.goals);
     const reflections = asArray(req.body.recentReflections);
 
-    const completion = await openai.chat.completions.create({
-      model: CHAT_MODEL,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are Aurora's Identity Engine. Output strict JSON ONLY: { archetype, strengths:[], blindspots:[], next_chapter, mantra }.",
-        },
-        {
-          role: "user",
-          content: `Traits: ${traits.join(", ")}
+    const completion = await tryAI(() =>
+      openai.chat.completions.create({
+        model: CHAT_MODEL,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are Aurora's Identity Engine. Output strict JSON ONLY: { archetype, strengths:[], blindspots:[], next_chapter, mantra }.",
+          },
+          {
+            role: "user",
+            content: `Traits: ${traits.join(", ")}
 Goals: ${goals.join(", ") || "n/a"}
 Recent reflections: ${reflections.join(" | ") || "n/a"}`,
-        },
-      ],
-    });
+          },
+        ],
+      })
+    );
 
     const raw = completion.choices?.[0]?.message?.content ?? "{}";
     const parsed = safeJSON(raw, {});
@@ -83,8 +86,7 @@ Recent reflections: ${reflections.join(" | ") || "n/a"}`,
 
     return res.json({ insights: parsed });
   } catch (err) {
-    console.error("[identityController.generateIdentityInsights]", err);
-    return res.status(500).json({ error: err.message });
+    return next(err);
   }
 }
 

@@ -2,10 +2,11 @@ import { openai } from "../config/openai.js";
 import Session from "../models/Session.js";
 import { requireFields } from "../utils/validate.js";
 import { tryDB } from "../utils/db.js";
+import { tryAI } from "../utils/ai.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 
-export async function chat(req, res) {
+export async function chat(req, res, next) {
   try {
     if (!requireFields(req.body, ["messages"], res)) return;
     const { messages, system, sessionId, type = "chat" } = req.body;
@@ -23,10 +24,12 @@ export async function chat(req, res) {
       ...messages.map((m) => ({ role: m.role, content: m.content })),
     ];
 
-    const completion = await openai.chat.completions.create({
-      model: CHAT_MODEL,
-      messages: fullMessages,
-    });
+    const completion = await tryAI(() =>
+      openai.chat.completions.create({
+        model: CHAT_MODEL,
+        messages: fullMessages,
+      })
+    );
 
     const reply = completion.choices?.[0]?.message?.content ?? "";
 
@@ -60,8 +63,7 @@ export async function chat(req, res) {
 
     return res.json({ reply, sessionId: session?._id || null, model: CHAT_MODEL });
   } catch (err) {
-    console.error("[aiController.chat]", err);
-    return res.status(500).json({ error: err.message });
+    return next(err);
   }
 }
 

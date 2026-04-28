@@ -2,6 +2,7 @@ import Opportunity from "../models/Opportunity.js";
 import { openai } from "../config/openai.js";
 import { requireFields, safeJSON, asArray, clampInt } from "../utils/validate.js";
 import { tryDB, dbReady } from "../utils/db.js";
+import { tryAI } from "../utils/ai.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 
@@ -19,7 +20,7 @@ export async function listOpportunities(req, res) {
   return res.json({ opportunities: opportunities || [] });
 }
 
-export async function createOpportunity(req, res) {
+export async function createOpportunity(req, res, next) {
   try {
     if (!requireFields(req.body, ["title"], res)) return;
     const payload = { ...req.body, userId: req.user.id };
@@ -29,12 +30,11 @@ export async function createOpportunity(req, res) {
     }
     return res.status(201).json({ opportunity });
   } catch (err) {
-    console.error("[goieController.createOpportunity]", err);
-    return res.status(500).json({ error: err.message });
+    return next(err);
   }
 }
 
-export async function generateOpportunities(req, res) {
+export async function generateOpportunities(req, res, next) {
   try {
     const interests = asArray(req.body?.interests);
     const skills = asArray(req.body?.skills);
@@ -42,25 +42,27 @@ export async function generateOpportunities(req, res) {
     const count = clampInt(req.body?.count, { min: 1, max: 15, fallback: 5 });
     const timeframe = req.body?.timeframe || "90d";
 
-    const completion = await openai.chat.completions.create({
-      model: CHAT_MODEL,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are GOIE — Aurora's Global Opportunity Intelligence Engine. Output strict JSON ONLY: { opportunities:[{title,description,category(career|investment|education|relationship|health|creative|other),score(0-100),tags:[],sourceUrl}] }.",
-        },
-        {
-          role: "user",
-          content: `Generate ${count} concrete opportunities.
+    const completion = await tryAI(() =>
+      openai.chat.completions.create({
+        model: CHAT_MODEL,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are GOIE — Aurora's Global Opportunity Intelligence Engine. Output strict JSON ONLY: { opportunities:[{title,description,category(career|investment|education|relationship|health|creative|other),score(0-100),tags:[],sourceUrl}] }.",
+          },
+          {
+            role: "user",
+            content: `Generate ${count} concrete opportunities.
 Interests: ${interests.join(", ") || "general growth"}
 Skills: ${skills.join(", ") || "n/a"}
 Region: ${region}
 Timeframe: ${timeframe}.`,
-        },
-      ],
-    });
+          },
+        ],
+      })
+    );
 
     const raw = completion.choices?.[0]?.message?.content ?? "{}";
     const parsed = safeJSON(raw, { opportunities: [] });
@@ -85,35 +87,35 @@ Timeframe: ${timeframe}.`,
     }
     return res.status(201).json({ opportunities });
   } catch (err) {
-    console.error("[goieController.generateOpportunities]", err);
-    return res.status(500).json({ error: err.message });
+    return next(err);
   }
 }
 
-export async function getTrends(req, res) {
+export async function getTrends(req, res, next) {
   try {
     const focus = req.body?.focus || "global opportunities";
     const region = req.body?.region || "global";
 
-    const completion = await openai.chat.completions.create({
-      model: CHAT_MODEL,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are GOIE's Trends layer. Output strict JSON ONLY: { headline, trends:[{label,delta,horizon,confidence(0-1)}], insights:[], actionPrompts:[] }.",
-        },
-        { role: "user", content: `Focus: ${focus}. Region: ${region}.` },
-      ],
-    });
+    const completion = await tryAI(() =>
+      openai.chat.completions.create({
+        model: CHAT_MODEL,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are GOIE's Trends layer. Output strict JSON ONLY: { headline, trends:[{label,delta,horizon,confidence(0-1)}], insights:[], actionPrompts:[] }.",
+          },
+          { role: "user", content: `Focus: ${focus}. Region: ${region}.` },
+        ],
+      })
+    );
 
     const raw = completion.choices?.[0]?.message?.content ?? "{}";
     const parsed = safeJSON(raw, {});
     return res.json(parsed);
   } catch (err) {
-    console.error("[goieController.getTrends]", err);
-    return res.status(500).json({ error: err.message });
+    return next(err);
   }
 }
 

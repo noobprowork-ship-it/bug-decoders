@@ -4,6 +4,7 @@ import Opportunity from "../models/Opportunity.js";
 import { openai } from "../config/openai.js";
 import { safeJSON } from "../utils/validate.js";
 import { tryDB } from "../utils/db.js";
+import { tryAI, isAIError } from "../utils/ai.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 
@@ -12,7 +13,7 @@ function pct(num, den) {
   return Math.round((num / den) * 100);
 }
 
-export async function getDashboard(req, res) {
+export async function getDashboard(req, res, next) {
   try {
     const userId = req.user.id;
     const now = Date.now();
@@ -45,29 +46,37 @@ export async function getDashboard(req, res) {
     const futureScore = futureScoreBands.find((b) => momentumPct >= b.min)?.label ?? "C";
 
     let aiLayer = { insights: [], predictions: [] };
+    let aiStatus = { ok: true };
     try {
-      const completion = await openai.chat.completions.create({
-        model: CHAT_MODEL,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are Aurora's Dashboard Intelligence. Output strict JSON ONLY: { insights:[3 short strings], predictions:[{horizon,claim,confidence(0-1)}] }.",
-          },
-          {
-            role: "user",
-            content: `User: ${user?.name || "Guest"}; Identity: ${JSON.stringify(user?.identityProfile || {})};
+      const completion = await tryAI(() =>
+        openai.chat.completions.create({
+          model: CHAT_MODEL,
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are Aurora's Dashboard Intelligence. Output strict JSON ONLY: { insights:[3 short strings], predictions:[{horizon,claim,confidence(0-1)}] }.",
+            },
+            {
+              role: "user",
+              content: `User: ${user?.name || "Guest"}; Identity: ${JSON.stringify(user?.identityProfile || {})};
 Sessions last 7d: ${sessionsLast7d}; prior 7d: ${sessionsPrior7d};
 Top opportunities: ${JSON.stringify(topOpps)};
 Recent activity: ${JSON.stringify(recent)}.`,
-          },
-        ],
-      });
+            },
+          ],
+        })
+      );
       const raw = completion.choices?.[0]?.message?.content ?? "{}";
       aiLayer = safeJSON(raw, aiLayer);
     } catch (err) {
-      console.warn("[dashboardController] AI layer skipped:", err.message);
+      if (isAIError(err)) {
+        console.warn("[dashboardController] AI layer skipped:", err.code, err.providerMessage);
+        aiStatus = { ok: false, code: err.code, message: err.message, hint: err.hint };
+      } else {
+        return next(err);
+      }
     }
 
     return res.json({
@@ -88,9 +97,9 @@ Recent activity: ${JSON.stringify(recent)}.`,
       predictions: aiLayer.predictions || [],
       recentActivity: (recent || []).map((s) => ({ type: s.type, title: s.title, at: s.updatedAt })),
       topOpportunities: topOpps,
+      aiStatus,
     });
   } catch (err) {
-    console.error("[dashboardController.getDashboard]", err);
-    return res.status(500).json({ error: err.message });
+    return next(err);
   }
 }

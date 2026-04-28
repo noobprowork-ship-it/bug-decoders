@@ -14,6 +14,7 @@ const __dirname = path.dirname(__filename);
 
 import { connectDB } from "./src/config/db.js";
 import { openai } from "./src/config/openai.js";
+import { tryAI, isAIError, aiErrorPayload } from "./src/utils/ai.js";
 import { verifyTokenString } from "./src/utils/verifyToken.js";
 
 import authRoutes from "./src/routes/auth.js";
@@ -150,6 +151,10 @@ app.use((_req, res) => {
 });
 
 app.use((err, _req, res, _next) => {
+  if (isAIError(err)) {
+    console.warn("[ai] provider error:", err.code, "-", err.providerMessage);
+    return res.status(err.status).json(aiErrorPayload(err));
+  }
   console.error("[server] unhandled error:", err);
   res.status(err.status || 500).json({ error: err.message || "Internal Server Error" });
 });
@@ -224,11 +229,13 @@ wss.on("connection", (ws) => {
 
         let full = "";
         try {
-          const stream = await openai.chat.completions.create({
-            model: CHAT_MODEL,
-            messages,
-            stream: true,
-          });
+          const stream = await tryAI(() =>
+            openai.chat.completions.create({
+              model: CHAT_MODEL,
+              messages,
+              stream: true,
+            })
+          );
           for await (const part of stream) {
             const delta = part.choices?.[0]?.delta?.content || "";
             if (delta) {
@@ -237,8 +244,13 @@ wss.on("connection", (ws) => {
             }
           }
         } catch (streamErr) {
-          console.error("[ws] stream error:", streamErr);
-          ws.send(JSON.stringify({ type: "error", message: streamErr.message }));
+          if (isAIError(streamErr)) {
+            console.warn("[ws] ai error:", streamErr.code, "-", streamErr.providerMessage);
+            ws.send(JSON.stringify({ type: "error", ...aiErrorPayload(streamErr), message: streamErr.message }));
+          } else {
+            console.error("[ws] stream error:", streamErr);
+            ws.send(JSON.stringify({ type: "error", message: streamErr.message, code: "ws_stream_error" }));
+          }
           return;
         }
 

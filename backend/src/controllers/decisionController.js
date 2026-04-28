@@ -2,10 +2,11 @@ import Session from "../models/Session.js";
 import { openai } from "../config/openai.js";
 import { requireFields, safeJSON, asArray } from "../utils/validate.js";
 import { tryDB } from "../utils/db.js";
+import { tryAI } from "../utils/ai.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 
-export async function evaluate(req, res) {
+export async function evaluate(req, res, next) {
   try {
     if (!requireFields(req.body, ["question", "options"], res)) return;
     const { question } = req.body;
@@ -16,24 +17,26 @@ export async function evaluate(req, res) {
     const criteria = asArray(req.body.criteria);
     const stakeholders = asArray(req.body.stakeholders);
 
-    const completion = await openai.chat.completions.create({
-      model: CHAT_MODEL,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are Aurora's Ethical Decision Assistant. Output strict JSON ONLY: { recommended, safestChoice, scores:[{option,score(0-100),riskScore(0-100, higher=worse),ethicsScore(0-100, higher=better),pros:[],cons:[]}], rationale }. safestChoice is the option with the lowest riskScore.",
-        },
-        {
-          role: "user",
-          content: `Question: ${question}
+    const completion = await tryAI(() =>
+      openai.chat.completions.create({
+        model: CHAT_MODEL,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are Aurora's Ethical Decision Assistant. Output strict JSON ONLY: { recommended, safestChoice, scores:[{option,score(0-100),riskScore(0-100, higher=worse),ethicsScore(0-100, higher=better),pros:[],cons:[]}], rationale }. safestChoice is the option with the lowest riskScore.",
+          },
+          {
+            role: "user",
+            content: `Question: ${question}
 Options: ${options.join(" | ")}
 Criteria: ${criteria.join(", ") || "balanced long-term wellbeing"}
 Stakeholders: ${stakeholders.join(", ") || "self"}`,
-        },
-      ],
-    });
+          },
+        ],
+      })
+    );
 
     const raw = completion.choices?.[0]?.message?.content ?? "{}";
     const parsed = safeJSON(raw, { scores: [] });
@@ -58,8 +61,7 @@ Stakeholders: ${stakeholders.join(", ") || "self"}`,
 
     return res.json({ sessionId: session?._id || null, ...parsed });
   } catch (err) {
-    console.error("[decisionController.evaluate]", err);
-    return res.status(500).json({ error: err.message });
+    return next(err);
   }
 }
 

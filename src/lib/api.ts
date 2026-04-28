@@ -47,6 +47,30 @@ export function setToken(token: string | null) {
   else window.localStorage.removeItem(TOKEN_KEY);
 }
 
+/**
+ * Structured error from the Aurora API. Carries the HTTP status, a stable
+ * `code` (e.g. "ai_quota_exceeded") and a human-friendly `hint` so UI pages
+ * can render an actionable banner instead of just "500: error".
+ */
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  hint?: string;
+  providerStatus?: number;
+  constructor(message: string, opts: { status: number; code?: string; hint?: string; providerStatus?: number }) {
+    super(message);
+    this.name = "ApiError";
+    this.status = opts.status;
+    this.code = opts.code;
+    this.hint = opts.hint;
+    this.providerStatus = opts.providerStatus;
+  }
+}
+
+export function isApiError(e: unknown): e is ApiError {
+  return e instanceof ApiError;
+}
+
 async function request<T = unknown>(
   path: string,
   init: RequestInit = {},
@@ -61,17 +85,24 @@ async function request<T = unknown>(
     if (token) headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const res = await fetch(path, { ...init, headers });
+  const res = await fetch(path, { ...init, headers, credentials: "same-origin" });
   const text = await res.text();
   let data: unknown = null;
   if (text) {
     try { data = JSON.parse(text); } catch { data = text; }
   }
   if (!res.ok) {
+    const obj = (data && typeof data === "object" ? data : {}) as Record<string, unknown>;
     const message =
-      (data && typeof data === "object" && "error" in data && (data as { error: string }).error) ||
+      (typeof obj.error === "string" && obj.error) ||
+      (typeof obj.message === "string" && obj.message) ||
       `Request failed: ${res.status}`;
-    throw new Error(String(message));
+    throw new ApiError(String(message), {
+      status: res.status,
+      code: typeof obj.code === "string" ? obj.code : undefined,
+      hint: typeof obj.hint === "string" ? obj.hint : undefined,
+      providerStatus: typeof obj.providerStatus === "number" ? obj.providerStatus : undefined,
+    });
   }
   return data as T;
 }
@@ -245,7 +276,7 @@ export type VoiceMessage =
   | { type: "stream-start" }
   | { type: "stream-chunk"; text: string }
   | { type: "stream-end"; text: string }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string; code?: string; hint?: string; providerStatus?: number };
 
 export function openVoiceCompanion(opts: {
   onMessage: (msg: VoiceMessage) => void;

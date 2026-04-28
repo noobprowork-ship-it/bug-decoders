@@ -2,10 +2,11 @@ import Session from "../models/Session.js";
 import { openai } from "../config/openai.js";
 import { requireFields, safeJSON, clampInt } from "../utils/validate.js";
 import { tryDB } from "../utils/db.js";
+import { tryAI } from "../utils/ai.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 
-export async function generateCinematic(req, res) {
+export async function generateCinematic(req, res, next) {
   try {
     if (!requireFields(req.body, ["theme"], res)) return;
     const { theme } = req.body;
@@ -13,24 +14,26 @@ export async function generateCinematic(req, res) {
     const tone = req.body.tone || "epic";
     const protagonist = req.body.protagonist || "the user";
 
-    const completion = await openai.chat.completions.create({
-      model: CHAT_MODEL,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are Aurora's Cinematic Director. Output strict JSON ONLY: { title, logline, scenes:[{index,setting,action,dialogue,visual_prompt}] }. Each visual_prompt must be a vivid, comma-separated image-model prompt (lens, lighting, mood).",
-        },
-        {
-          role: "user",
-          content: `Theme: ${theme}
+    const completion = await tryAI(() =>
+      openai.chat.completions.create({
+        model: CHAT_MODEL,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are Aurora's Cinematic Director. Output strict JSON ONLY: { title, logline, scenes:[{index,setting,action,dialogue,visual_prompt}] }. Each visual_prompt must be a vivid, comma-separated image-model prompt (lens, lighting, mood).",
+          },
+          {
+            role: "user",
+            content: `Theme: ${theme}
 Tone: ${tone}
 Protagonist: ${protagonist}
 Number of scenes: ${scenes}.`,
-        },
-      ],
-    });
+          },
+        ],
+      })
+    );
 
     const raw = completion.choices?.[0]?.message?.content ?? "{}";
     const parsed = safeJSON(raw, {});
@@ -47,8 +50,7 @@ Number of scenes: ${scenes}.`,
 
     return res.json({ sessionId: session?._id || null, cinematic: parsed });
   } catch (err) {
-    console.error("[cinematicController.generateCinematic]", err);
-    return res.status(500).json({ error: err.message });
+    return next(err);
   }
 }
 

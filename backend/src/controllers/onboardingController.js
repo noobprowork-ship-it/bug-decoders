@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import { openai } from "../config/openai.js";
 import { safeJSON } from "../utils/validate.js";
 import { tryDB, dbReady } from "../utils/db.js";
+import { tryAI } from "../utils/ai.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 
@@ -39,7 +40,7 @@ export async function startOnboarding(req, res) {
   });
 }
 
-export async function answerOnboarding(req, res) {
+export async function answerOnboarding(req, res, next) {
   try {
     const { questionId, answer } = req.body || {};
     if (!questionId || answer === undefined || answer === null) {
@@ -53,9 +54,9 @@ export async function answerOnboarding(req, res) {
     state.answers[questionId] = answer;
     state.step = idx + 1;
 
-    const next = ONBOARDING_QUESTIONS[idx + 1];
+    const next_q = ONBOARDING_QUESTIONS[idx + 1];
 
-    if (next) {
+    if (next_q) {
       if (dbReady()) {
         await tryDB(() =>
           User.findByIdAndUpdate(req.user.id, { $set: { "settings.onboarding": state } })
@@ -65,23 +66,25 @@ export async function answerOnboarding(req, res) {
         done: false,
         step: idx + 2,
         totalSteps: ONBOARDING_QUESTIONS.length,
-        question: { id: next.id, prompt: next.prompt },
+        question: { id: next_q.id, prompt: next_q.prompt },
         progressPct: Math.round(((idx + 2) / ONBOARDING_QUESTIONS.length) * 100),
       });
     }
 
-    const completion = await openai.chat.completions.create({
-      model: CHAT_MODEL,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are Aurora's Smart Onboarding. Build a tight user profile from their answers. Output strict JSON ONLY: { archetype, summary, strengths:[], growthEdges:[], recommendedRituals:[{name,why,cadence}], firstWeekFocus }.",
-        },
-        { role: "user", content: `Answers: ${JSON.stringify(state.answers)}` },
-      ],
-    });
+    const completion = await tryAI(() =>
+      openai.chat.completions.create({
+        model: CHAT_MODEL,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are Aurora's Smart Onboarding. Build a tight user profile from their answers. Output strict JSON ONLY: { archetype, summary, strengths:[], growthEdges:[], recommendedRituals:[{name,why,cadence}], firstWeekFocus }.",
+          },
+          { role: "user", content: `Answers: ${JSON.stringify(state.answers)}` },
+        ],
+      })
+    );
 
     const raw = completion.choices?.[0]?.message?.content ?? "{}";
     const profile = safeJSON(raw, {});
@@ -102,8 +105,7 @@ export async function answerOnboarding(req, res) {
 
     return res.json({ done: true, profile });
   } catch (err) {
-    console.error("[onboardingController.answerOnboarding]", err);
-    return res.status(500).json({ error: err.message });
+    return next(err);
   }
 }
 
