@@ -1,90 +1,197 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { Shell } from "@/components/aurora/Shell";
-import { GlowCard, PageHeader } from "@/components/aurora/ui";
-import { Brain } from "lucide-react";
+import { GlowCard, PageHeader, NeonButton } from "@/components/aurora/ui";
+import { Brain, Sparkles, Loader2, AlertTriangle } from "lucide-react";
+import { mind } from "@/lib/api";
 
 export const Route = createFileRoute("/mind")({
-  head: () => ({ meta: [{ title: "Mind Universe — Aurora Mind OS" }] }),
+  head: () => ({ meta: [{ title: "Mind — Aurora Mind OS" }] }),
   component: Mind,
 });
 
-const clusters = [
-  { name: "Curiosity", value: 92, color: "oklch(0.78 0.18 230)" },
-  { name: "Empathy", value: 81, color: "oklch(0.7 0.22 320)" },
-  { name: "Discipline", value: 74, color: "oklch(0.7 0.22 295)" },
-  { name: "Risk-tolerance", value: 68, color: "oklch(0.85 0.15 190)" },
-  { name: "Strategy", value: 87, color: "oklch(0.75 0.2 160)" },
+type Decoding = {
+  themes?: string[];
+  cognitive_patterns?: string[];
+  emotional_tone?: string;
+  recommendations?: string[];
+};
+
+type Universe = {
+  personality?: { type?: string; traits?: { name: string; score: number }[] };
+  thinkingPatterns?: string[];
+  cognitiveBiases?: string[];
+  preferredEnvironments?: string[];
+  growthLevers?: string[];
+};
+
+const UNIVERSE_QS: { id: string; q: string }[] = [
+  { id: "energy", q: "When do you feel most alive?" },
+  { id: "decision_style", q: "How do you usually make big decisions?" },
+  { id: "stress", q: "What does stress look like in your body and mind?" },
+  { id: "ambition", q: "What would a perfect 12 months look like?" },
+  { id: "fear", q: "What's a fear that quietly shapes your choices?" },
 ];
 
 function Mind() {
+  const [tab, setTab] = useState<"decode" | "universe">("decode");
+
+  // Decode state
+  const [thoughts, setThoughts] = useState("");
+  const [mood, setMood] = useState("");
+  const [decoding, setDecoding] = useState<Decoding | null>(null);
+
+  // Universe state
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [universe, setUniverse] = useState<Universe | null>(null);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onDecode() {
+    if (!thoughts.trim()) return;
+    setLoading(true); setError(null);
+    try {
+      const data = await mind.decode({ thoughts, mood: mood || undefined }) as { decoding: Decoding };
+      setDecoding(data.decoding);
+    } catch (e) { setError(e instanceof Error ? e.message : "Decoding failed"); }
+    finally { setLoading(false); }
+  }
+
+  async function onExplore() {
+    setLoading(true); setError(null);
+    try {
+      const data = await mind.explore({ responses: answers }) as Universe;
+      setUniverse(data);
+    } catch (e) { setError(e instanceof Error ? e.message : "Exploration failed"); }
+    finally { setLoading(false); }
+  }
+
   return (
     <Shell>
-      <PageHeader eyebrow="Module 06" icon={Brain} title="Mind Universe Explorer" subtitle="Your inner cosmos — personality, skills, and emotional gravity, mapped." />
+      <PageHeader eyebrow="Module 06" icon={Brain} title="Mind Universe" subtitle="Decode your current thoughts, or build a deep map of your mind." />
 
-      <div className="grid lg:grid-cols-3 gap-4">
-        <GlowCard className="lg:col-span-2" glow="purple">
-          <div className="relative aspect-square max-h-[520px] mx-auto">
-            <svg viewBox="0 0 500 500" className="w-full h-full">
-              <defs>
-                <radialGradient id="core">
-                  <stop offset="0%" stopColor="oklch(0.85 0.18 280)" />
-                  <stop offset="100%" stopColor="oklch(0.78 0.18 230 / 0)" />
-                </radialGradient>
-              </defs>
-              {/* Orbits */}
-              {[80, 140, 200].map((r) => (
-                <circle key={r} cx="250" cy="250" r={r} fill="none" stroke="oklch(1 0 0 / 0.06)" />
-              ))}
-              {/* Core */}
-              <circle cx="250" cy="250" r="60" fill="url(#core)" />
-              <circle cx="250" cy="250" r="22" fill="oklch(0.78 0.18 230)">
-                <animate attributeName="r" values="22;28;22" dur="3s" repeatCount="indefinite" />
-              </circle>
-
-              {/* Nodes */}
-              {clusters.map((c, i) => {
-                const angle = (i / clusters.length) * Math.PI * 2;
-                const r = 170;
-                const x = 250 + Math.cos(angle) * r;
-                const y = 250 + Math.sin(angle) * r;
-                const size = 12 + c.value / 6;
-                return (
-                  <g key={c.name}>
-                    <line x1="250" y1="250" x2={x} y2={y} stroke={c.color} strokeOpacity="0.4" strokeWidth="1" />
-                    <circle cx={x} cy={y} r={size} fill={c.color} opacity="0.85">
-                      <animate attributeName="r" values={`${size};${size+4};${size}`} dur={`${3 + i * 0.4}s`} repeatCount="indefinite" />
-                    </circle>
-                    <text x={x} y={y + size + 16} textAnchor="middle" fill="oklch(0.97 0.01 250)" fontSize="11" fontFamily="Inter">{c.name}</text>
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-        </GlowCard>
-
-        <GlowCard glow="blue">
-          <h3 className="font-display text-lg font-semibold mb-4">Personality Clusters</h3>
-          <div className="space-y-4">
-            {clusters.map((c) => (
-              <div key={c.name}>
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span>{c.name}</span>
-                  <span style={{ color: c.color }}>{c.value}</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${c.value}%`, background: c.color, boxShadow: `0 0 12px ${c.color}` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 p-4 rounded-2xl glass border border-primary/20">
-            <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Dominant archetype</div>
-            <div className="font-display text-xl font-bold text-gradient mt-1">The Explorer-Architect</div>
-            <p className="text-xs text-muted-foreground mt-2">Builds systems by following curiosity. Thrives at the edge of known maps.</p>
-          </div>
-        </GlowCard>
+      <div className="flex gap-2 mb-6">
+        {[
+          { id: "decode", label: "Mind Decoder" },
+          { id: "universe", label: "Universe Explorer" },
+        ].map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id as "decode" | "universe")}
+            className={`px-4 py-2 rounded-2xl text-sm transition ${tab === t.id ? "bg-aurora text-primary-foreground shadow-neon" : "glass hover:bg-white/10"}`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
+
+      {error && (
+        <GlowCard glow="pink" className="mb-6">
+          <div className="flex items-start gap-3 text-sm">
+            <AlertTriangle className="h-4 w-4 text-[oklch(0.7_0.22_320)] mt-0.5 shrink-0" />
+            <div>{error}</div>
+          </div>
+        </GlowCard>
+      )}
+
+      {tab === "decode" && (
+        <>
+          <GlowCard glow="blue" className="mb-6">
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">What's on your mind?</label>
+                <textarea value={thoughts} onChange={(e) => setThoughts(e.target.value)} rows={4} placeholder="Pour out your thoughts — Aurora will find the patterns…" className="mt-2 w-full glass rounded-2xl p-4 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary resize-none" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Mood (optional)</label>
+                <input value={mood} onChange={(e) => setMood(e.target.value)} placeholder="anxious / hopeful / restless…" className="mt-2 w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary" />
+              </div>
+              <NeonButton onClick={onDecode} disabled={loading || !thoughts.trim()}>
+                {loading ? <><Loader2 className="inline h-4 w-4 mr-2 animate-spin" /> Decoding</> : <><Sparkles className="inline h-4 w-4 mr-2" /> Decode my mind</>}
+              </NeonButton>
+            </div>
+          </GlowCard>
+
+          {decoding && (
+            <div className="grid md:grid-cols-2 gap-4">
+              <GlowCard glow="purple">
+                <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-1">Emotional tone</div>
+                <div className="font-display text-2xl font-bold text-gradient mb-4">{decoding.emotional_tone || "—"}</div>
+                <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Themes</div>
+                <div className="flex flex-wrap gap-2">
+                  {(decoding.themes || []).map((t, i) => <span key={i} className="glass rounded-full px-3 py-1 text-xs">{t}</span>)}
+                </div>
+              </GlowCard>
+              <GlowCard glow="blue">
+                <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Cognitive patterns</div>
+                <ul className="space-y-1 text-sm mb-4">
+                  {(decoding.cognitive_patterns || []).map((p, i) => <li key={i}>· {p}</li>)}
+                </ul>
+                <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Aurora suggests</div>
+                <ul className="space-y-1 text-sm">
+                  {(decoding.recommendations || []).map((r, i) => <li key={i}>→ {r}</li>)}
+                </ul>
+              </GlowCard>
+            </div>
+          )}
+        </>
+      )}
+
+      {tab === "universe" && (
+        <>
+          <GlowCard glow="blue" className="mb-6">
+            <div className="space-y-4">
+              {UNIVERSE_QS.map((q) => (
+                <div key={q.id}>
+                  <label className="text-sm">{q.q}</label>
+                  <input
+                    value={answers[q.id] || ""}
+                    onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
+                    className="mt-2 w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              ))}
+              <NeonButton onClick={onExplore} disabled={loading || Object.keys(answers).length < 3}>
+                {loading ? <><Loader2 className="inline h-4 w-4 mr-2 animate-spin" /> Mapping</> : <><Sparkles className="inline h-4 w-4 mr-2" /> Map my mind universe</>}
+              </NeonButton>
+            </div>
+          </GlowCard>
+
+          {universe && (
+            <div className="grid md:grid-cols-2 gap-4">
+              <GlowCard glow="purple">
+                <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-1">Personality</div>
+                <div className="font-display text-xl font-bold text-gradient mb-4">{universe.personality?.type || "—"}</div>
+                <div className="space-y-2">
+                  {(universe.personality?.traits || []).map((t, i) => (
+                    <div key={i}>
+                      <div className="flex justify-between text-xs mb-1"><span>{t.name}</span><span className="text-muted-foreground">{t.score}</span></div>
+                      <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                        <div className="h-full bg-aurora" style={{ width: `${Math.min(100, Math.max(0, t.score || 0))}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </GlowCard>
+              <GlowCard glow="blue">
+                <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Thinking patterns</div>
+                <ul className="space-y-1 text-sm mb-4">
+                  {(universe.thinkingPatterns || []).map((p, i) => <li key={i}>· {p}</li>)}
+                </ul>
+                <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Cognitive biases</div>
+                <ul className="space-y-1 text-sm mb-4">
+                  {(universe.cognitiveBiases || []).map((p, i) => <li key={i}>· {p}</li>)}
+                </ul>
+                <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Growth levers</div>
+                <ul className="space-y-1 text-sm">
+                  {(universe.growthLevers || []).map((p, i) => <li key={i}>→ {p}</li>)}
+                </ul>
+              </GlowCard>
+            </div>
+          )}
+        </>
+      )}
     </Shell>
   );
 }

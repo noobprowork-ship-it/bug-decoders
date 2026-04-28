@@ -1,101 +1,108 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { Shell } from "@/components/aurora/Shell";
-import { GlowCard, PageHeader, StatChip } from "@/components/aurora/ui";
-import { Activity, TrendingUp } from "lucide-react";
+import { GlowCard, PageHeader, NeonButton } from "@/components/aurora/ui";
+import { Activity, Sparkles, Loader2, AlertTriangle } from "lucide-react";
+import { identity } from "@/lib/api";
 
 export const Route = createFileRoute("/identity")({
-  head: () => ({ meta: [{ title: "Identity Tracker — Aurora Mind OS" }] }),
+  head: () => ({ meta: [{ title: "Identity — Aurora Mind OS" }] }),
   component: Identity,
 });
 
-const skills = [
-  { name: "Systems Design", value: 84 },
-  { name: "Communication", value: 71 },
-  { name: "Strategic Vision", value: 78 },
-  { name: "Execution Velocity", value: 88 },
-];
-
-function Ring({ value, label }: { value: number; label: string }) {
-  const c = 2 * Math.PI * 56;
-  const dash = (value / 100) * c;
-  return (
-    <div className="flex flex-col items-center">
-      <div className="relative h-36 w-36">
-        <svg viewBox="0 0 140 140" className="w-full h-full -rotate-90">
-          <circle cx="70" cy="70" r="56" fill="none" stroke="oklch(1 0 0 / 0.06)" strokeWidth="10" />
-          <circle cx="70" cy="70" r="56" fill="none" stroke="url(#ring)" strokeWidth="10" strokeLinecap="round" strokeDasharray={`${dash} ${c}`} style={{ filter: "drop-shadow(0 0 8px oklch(0.78 0.18 230 / 0.7))" }} />
-          <defs>
-            <linearGradient id="ring" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stopColor="oklch(0.78 0.18 230)" />
-              <stop offset="100%" stopColor="oklch(0.7 0.22 320)" />
-            </linearGradient>
-          </defs>
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="font-display text-3xl font-bold text-gradient">{value}</div>
-          <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">pts</div>
-        </div>
-      </div>
-      <div className="text-sm mt-3 text-center">{label}</div>
-    </div>
-  );
-}
+type Insight = {
+  archetype?: string;
+  strengths?: string[];
+  blindspots?: string[];
+  next_chapter?: string;
+  mantra?: string;
+};
 
 function Identity() {
+  const [traits, setTraits] = useState("curious, disciplined, deep-thinking, restless");
+  const [goals, setGoals] = useState("ship a product loved by 10k people, regain physical strength");
+  const [reflections, setReflections] = useState("");
+  const [insight, setInsight] = useState<Insight | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onGenerate() {
+    setLoading(true); setError(null);
+    try {
+      const data = await identity.insights({
+        traits: traits.split(",").map((s) => s.trim()).filter(Boolean),
+        goals: goals.split(",").map((s) => s.trim()).filter(Boolean),
+        recentReflections: reflections.split("\n").map((s) => s.trim()).filter(Boolean),
+      }) as { insights: Insight };
+      setInsight(data.insights);
+    } catch (e) { setError(e instanceof Error ? e.message : "Generation failed"); }
+    finally { setLoading(false); }
+  }
+
   return (
     <Shell>
-      <PageHeader eyebrow="Module 07" icon={Activity} title="Identity Tracker" subtitle="Watch yourself become. Skill, behavior, and growth — measured weekly." />
+      <PageHeader eyebrow="Module 08" icon={Activity} title="Identity Evolution Tracker" subtitle="Distil who you are right now into a clear archetype, your strengths, your blindspots, your next chapter." />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <StatChip label="Streak" value="42d" />
-        <StatChip label="Growth" value="+18%" accent="purple" />
-        <StatChip label="Habits" value="11/14" accent="pink" />
-        <StatChip label="Level" value="07" />
-      </div>
+      <GlowCard glow="blue" className="mb-6">
+        <div className="space-y-4">
+          <div>
+            <label className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Traits (comma-separated)</label>
+            <input value={traits} onChange={(e) => setTraits(e.target.value)} className="mt-2 w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Goals (comma-separated)</label>
+            <input value={goals} onChange={(e) => setGoals(e.target.value)} className="mt-2 w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Recent reflections (one per line, optional)</label>
+            <textarea value={reflections} onChange={(e) => setReflections(e.target.value)} rows={3} placeholder="Honest journal-style thoughts from the last week…" className="mt-2 w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary resize-none" />
+          </div>
+          <NeonButton onClick={onGenerate} disabled={loading}>
+            {loading ? <><Loader2 className="inline h-4 w-4 mr-2 animate-spin" /> Reflecting</> : <><Sparkles className="inline h-4 w-4 mr-2" /> Generate identity insights</>}
+          </NeonButton>
+        </div>
+      </GlowCard>
 
-      <div className="grid lg:grid-cols-2 gap-4">
-        <GlowCard glow="blue">
-          <h3 className="font-display text-lg font-semibold mb-6">Core Skills</h3>
-          <div className="grid grid-cols-2 gap-6">
-            {skills.map((s) => <Ring key={s.name} value={s.value} label={s.name} />)}
+      {error && (
+        <GlowCard glow="pink" className="mb-6">
+          <div className="flex items-start gap-3 text-sm">
+            <AlertTriangle className="h-4 w-4 text-[oklch(0.7_0.22_320)] mt-0.5 shrink-0" />
+            <div>{error}</div>
           </div>
         </GlowCard>
+      )}
 
-        <GlowCard glow="pink">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display text-lg font-semibold">Weekly Growth</h3>
-            <span className="text-xs flex items-center gap-1 text-primary"><TrendingUp className="h-3 w-3" /> +12.4%</span>
-          </div>
-          <div className="h-56">
-            <svg viewBox="0 0 400 200" className="w-full h-full">
-              <defs>
-                <linearGradient id="bar" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="oklch(0.7 0.22 320)" />
-                  <stop offset="100%" stopColor="oklch(0.78 0.18 230)" />
-                </linearGradient>
-              </defs>
-              {[60, 75, 55, 90, 70, 110, 130].map((h, i) => (
-                <g key={i}>
-                  <rect x={20 + i * 52} y={180 - h} width="34" height={h} rx="8" fill="url(#bar)" opacity="0.9">
-                    <animate attributeName="height" from="0" to={h} dur="0.8s" />
-                    <animate attributeName="y" from="180" to={180 - h} dur="0.8s" />
-                  </rect>
-                  <text x={37 + i * 52} y={196} textAnchor="middle" fontSize="10" fill="oklch(0.7 0.04 260)">{["M","T","W","T","F","S","S"][i]}</text>
-                </g>
-              ))}
-            </svg>
+      {insight && (
+        <>
+          <GlowCard glow="purple" className="mb-6">
+            <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-1">Archetype</div>
+            <h2 className="font-display text-3xl font-bold text-gradient mb-3">{insight.archetype || "—"}</h2>
+            {insight.mantra && <p className="text-sm italic">"{insight.mantra}"</p>}
+          </GlowCard>
+
+          <div className="grid md:grid-cols-2 gap-4 mb-6">
+            <GlowCard glow="blue">
+              <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Strengths</div>
+              <ul className="space-y-2 text-sm">
+                {(insight.strengths || []).map((s, i) => <li key={i}>· {s}</li>)}
+              </ul>
+            </GlowCard>
+            <GlowCard glow="pink">
+              <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Blindspots</div>
+              <ul className="space-y-2 text-sm">
+                {(insight.blindspots || []).map((b, i) => <li key={i}>· {b}</li>)}
+              </ul>
+            </GlowCard>
           </div>
 
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            {[{l:"Focus",v:"4.2h"},{l:"Deep work",v:"86%"},{l:"Energy",v:"High"}].map((m)=>(
-              <div key={m.l} className="glass rounded-xl p-3 text-center">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{m.l}</div>
-                <div className="font-display font-semibold mt-0.5">{m.v}</div>
-              </div>
-            ))}
-          </div>
-        </GlowCard>
-      </div>
+          {insight.next_chapter && (
+            <GlowCard glow="purple">
+              <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-1">Next chapter</div>
+              <p className="font-display text-lg">{insight.next_chapter}</p>
+            </GlowCard>
+          )}
+        </>
+      )}
     </Shell>
   );
 }

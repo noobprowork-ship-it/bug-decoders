@@ -2,38 +2,18 @@ import User from "../models/User.js";
 import Session from "../models/Session.js";
 import { openai } from "../config/openai.js";
 import { requireFields, safeJSON, asArray } from "../utils/validate.js";
+import { tryDB } from "../utils/db.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 
-/**
- * GET /api/mind — return saved mind profile.
- */
 export async function getMindProfile(req, res) {
-  try {
-    const user = await User.findById(req.user.id).select("mindProfile");
-    if (!user) return res.status(404).json({ error: "User not found" });
-    return res.json({ mind: user.mindProfile || {} });
-  } catch (err) {
-    console.error("[mindController.getMindProfile]", err);
-    return res.status(500).json({ error: err.message });
-  }
+  const user = await tryDB(
+    () => User.findById(req.user.id).select("mindProfile").lean(),
+    null
+  );
+  return res.json({ mind: user?.mindProfile || {} });
 }
 
-/**
- * POST /api/mind/decode
- *
- * Body: { thoughts: string, mood?: string, recent_events?: string[] }
- *
- * Example response:
- *   {
- *     "decoding": {
- *       "themes": ["legacy", "fear of stagnation"],
- *       "cognitive_patterns": ["catastrophising", "deep planning"],
- *       "emotional_tone": "wistful",
- *       "recommendations": ["10-min walking meditation", "weekly reflection ritual"]
- *     }
- *   }
- */
 export async function decodeMind(req, res) {
   try {
     if (!requireFields(req.body, ["thoughts"], res)) return;
@@ -62,20 +42,24 @@ Recent events: ${recent.join("; ") || "n/a"}`,
     const raw = completion.choices?.[0]?.message?.content ?? "{}";
     const parsed = safeJSON(raw, {});
 
-    await User.findByIdAndUpdate(req.user.id, {
-      $set: { "mindProfile.lastDecoding": parsed, "mindProfile.lastDecodedAt": new Date() },
-    });
+    await tryDB(() =>
+      User.findByIdAndUpdate(req.user.id, {
+        $set: { "mindProfile.lastDecoding": parsed, "mindProfile.lastDecodedAt": new Date() },
+      })
+    );
 
-    await Session.create({
-      userId: req.user.id,
-      type: "mind",
-      title: "Mind decoding",
-      messages: [
-        { role: "user", content: thoughts },
-        { role: "assistant", content: raw },
-      ],
-      metadata: { mood, recent_events: recent, feature: "mind-decode" },
-    });
+    await tryDB(() =>
+      Session.create({
+        userId: req.user.id,
+        type: "mind",
+        title: "Mind decoding",
+        messages: [
+          { role: "user", content: thoughts },
+          { role: "assistant", content: raw },
+        ],
+        metadata: { mood, recent_events: recent, feature: "mind-decode" },
+      })
+    );
 
     return res.json({ decoding: parsed });
   } catch (err) {
@@ -84,27 +68,6 @@ Recent events: ${recent.join("; ") || "n/a"}`,
   }
 }
 
-/**
- * POST /api/mind/explore — Mind Universe Explorer.
- * Builds a personality + thinking-pattern profile from quick self-report data.
- *
- * Body:
- *   {
- *     responses: { questionId: string, answer: string }[] | { [k:string]: string }
- *   }
- *
- * Example response:
- *   {
- *     "personality": {
- *       "type": "INTJ-leaning systems thinker",
- *       "traits": [{ "name": "openness", "score": 88 }, ...]
- *     },
- *     "thinkingPatterns": ["first-principles", "long-horizon planning"],
- *     "cognitiveBiases": ["analysis paralysis"],
- *     "preferredEnvironments": ["quiet, low-noise mornings"],
- *     "growthLevers": ["speak ideas earlier", "ship rougher drafts"]
- *   }
- */
 export async function exploreMindUniverse(req, res) {
   try {
     if (!requireFields(req.body, ["responses"], res)) return;
@@ -126,20 +89,24 @@ export async function exploreMindUniverse(req, res) {
     const raw = completion.choices?.[0]?.message?.content ?? "{}";
     const parsed = safeJSON(raw, {});
 
-    await User.findByIdAndUpdate(req.user.id, {
-      $set: { "mindProfile.universe": parsed, "mindProfile.universeAt": new Date() },
-    });
+    await tryDB(() =>
+      User.findByIdAndUpdate(req.user.id, {
+        $set: { "mindProfile.universe": parsed, "mindProfile.universeAt": new Date() },
+      })
+    );
 
-    await Session.create({
-      userId: req.user.id,
-      type: "mind",
-      title: "Mind Universe exploration",
-      messages: [
-        { role: "user", content: JSON.stringify(responses) },
-        { role: "assistant", content: raw },
-      ],
-      metadata: { feature: "mind-universe" },
-    });
+    await tryDB(() =>
+      Session.create({
+        userId: req.user.id,
+        type: "mind",
+        title: "Mind Universe exploration",
+        messages: [
+          { role: "user", content: JSON.stringify(responses) },
+          { role: "assistant", content: raw },
+        ],
+        metadata: { feature: "mind-universe" },
+      })
+    );
 
     return res.json(parsed);
   } catch (err) {
@@ -149,14 +116,13 @@ export async function exploreMindUniverse(req, res) {
 }
 
 export async function listMindSessions(req, res) {
-  try {
-    const sessions = await Session.find({ userId: req.user.id, type: "mind" })
-      .sort({ updatedAt: -1 })
-      .limit(50)
-      .lean();
-    return res.json({ sessions });
-  } catch (err) {
-    console.error("[mindController.listMindSessions]", err);
-    return res.status(500).json({ error: err.message });
-  }
+  const sessions = await tryDB(
+    () =>
+      Session.find({ userId: req.user.id, type: "mind" })
+        .sort({ updatedAt: -1 })
+        .limit(50)
+        .lean(),
+    []
+  );
+  return res.json({ sessions: sessions || [] });
 }

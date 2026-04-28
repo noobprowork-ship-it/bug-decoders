@@ -1,49 +1,10 @@
 import Session from "../models/Session.js";
 import { openai } from "../config/openai.js";
 import { requireFields, safeJSON, asArray } from "../utils/validate.js";
+import { tryDB } from "../utils/db.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 
-/**
- * POST /api/decision/evaluate
- *
- * AI Ethical Decision Assistant — scores each option for risk + ethics and
- * recommends the safest, highest-integrity choice.
- *
- * Body:
- *   {
- *     question: string,
- *     options: string[]  (>= 2),
- *     criteria?: string[],
- *     stakeholders?: string[]
- *   }
- *
- * Example response:
- *   {
- *     "sessionId": "...",
- *     "recommended": "Option B",
- *     "scores": [
- *       {
- *         "option": "Option A",
- *         "score": 62,
- *         "riskScore": 71,
- *         "ethicsScore": 58,
- *         "pros": ["faster"],
- *         "cons": ["high blast radius"]
- *       },
- *       {
- *         "option": "Option B",
- *         "score": 81,
- *         "riskScore": 28,
- *         "ethicsScore": 90,
- *         "pros": ["transparent"],
- *         "cons": ["slower"]
- *       }
- *     ],
- *     "rationale": "Option B has the lowest risk and highest ethics score, with acceptable speed loss.",
- *     "safestChoice": "Option B"
- *   }
- */
 export async function evaluate(req, res) {
   try {
     if (!requireFields(req.body, ["question", "options"], res)) return;
@@ -82,38 +43,34 @@ Stakeholders: ${stakeholders.join(", ") || "self"}`,
       parsed.safestChoice = safest?.option;
     }
 
-    const session = await Session.create({
-      userId: req.user.id,
-      type: "decision",
-      title: question.slice(0, 80),
-      messages: [
-        { role: "user", content: question },
-        { role: "assistant", content: raw },
-      ],
-      metadata: { options, criteria, stakeholders, feature: "ethical-decision" },
-    });
+    const session = await tryDB(() =>
+      Session.create({
+        userId: req.user.id,
+        type: "decision",
+        title: question.slice(0, 80),
+        messages: [
+          { role: "user", content: question },
+          { role: "assistant", content: raw },
+        ],
+        metadata: { options, criteria, stakeholders, feature: "ethical-decision" },
+      })
+    );
 
-    return res.json({ sessionId: session._id, ...parsed });
+    return res.json({ sessionId: session?._id || null, ...parsed });
   } catch (err) {
     console.error("[decisionController.evaluate]", err);
     return res.status(500).json({ error: err.message });
   }
 }
 
-/**
- * GET /api/decision — list past decisions.
- *
- * Example response: { "decisions": [{ "_id": "...", "title": "...", "metadata": {...} }] }
- */
 export async function listDecisions(req, res) {
-  try {
-    const sessions = await Session.find({ userId: req.user.id, type: "decision" })
-      .sort({ updatedAt: -1 })
-      .limit(50)
-      .lean();
-    return res.json({ decisions: sessions });
-  } catch (err) {
-    console.error("[decisionController.listDecisions]", err);
-    return res.status(500).json({ error: err.message });
-  }
+  const sessions = await tryDB(
+    () =>
+      Session.find({ userId: req.user.id, type: "decision" })
+        .sort({ updatedAt: -1 })
+        .limit(50)
+        .lean(),
+    []
+  );
+  return res.json({ decisions: sessions || [] });
 }

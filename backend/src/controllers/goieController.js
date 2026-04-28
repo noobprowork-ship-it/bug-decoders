@@ -1,41 +1,32 @@
 import Opportunity from "../models/Opportunity.js";
 import { openai } from "../config/openai.js";
 import { requireFields, safeJSON, asArray, clampInt } from "../utils/validate.js";
+import { tryDB, dbReady } from "../utils/db.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 
-/**
- * GET /api/goie?category=&region=&limit=
- *
- * Example response:
- *   { "opportunities": [{ "_id": "...", "title": "...", "score": 88, "category": "career", ... }] }
- */
 export async function listOpportunities(req, res) {
-  try {
-    const { category, region } = req.query;
-    const limit = clampInt(req.query.limit, { min: 1, max: 200, fallback: 50 });
-    const filter = { userId: req.user.id };
-    if (category) filter.category = category;
-    if (region) filter.region = region;
+  const { category, region } = req.query;
+  const limit = clampInt(req.query.limit, { min: 1, max: 200, fallback: 50 });
+  const filter = { userId: req.user.id };
+  if (category) filter.category = category;
+  if (region) filter.region = region;
 
-    const opportunities = await Opportunity.find(filter).sort({ score: -1, createdAt: -1 }).limit(limit);
-    return res.json({ opportunities });
-  } catch (err) {
-    console.error("[goieController.listOpportunities]", err);
-    return res.status(500).json({ error: err.message });
-  }
+  const opportunities = await tryDB(
+    () => Opportunity.find(filter).sort({ score: -1, createdAt: -1 }).limit(limit).lean(),
+    []
+  );
+  return res.json({ opportunities: opportunities || [] });
 }
 
-/**
- * POST /api/goie — manually create an opportunity.
- *
- * Example response: { "opportunity": { "_id": "...", "title": "...", "score": 70 } }
- */
 export async function createOpportunity(req, res) {
   try {
     if (!requireFields(req.body, ["title"], res)) return;
     const payload = { ...req.body, userId: req.user.id };
-    const opportunity = await Opportunity.create(payload);
+    const opportunity = await tryDB(() => Opportunity.create(payload), null);
+    if (!opportunity) {
+      return res.status(503).json({ error: "Persistence is not available right now" });
+    }
     return res.status(201).json({ opportunity });
   } catch (err) {
     console.error("[goieController.createOpportunity]", err);
@@ -43,23 +34,6 @@ export async function createOpportunity(req, res) {
   }
 }
 
-/**
- * POST /api/goie/generate
- *
- * GOIE — synthesise concrete opportunities for the user.
- *
- * Body:
- *   {
- *     interests?: string[],
- *     skills?: string[],
- *     region?: string (default "global"),
- *     count?: number (clamped 1..15, default 5),
- *     timeframe?: "30d"|"90d"|"1y" (default "90d")
- *   }
- *
- * Example response:
- *   { "opportunities": [ { "title": "Senior Prompt Engineer at YC seed startup", "score": 84, ... } ] }
- */
 export async function generateOpportunities(req, res) {
   try {
     const interests = asArray(req.body?.interests);
@@ -92,42 +66,30 @@ Timeframe: ${timeframe}.`,
     const parsed = safeJSON(raw, { opportunities: [] });
     const items = Array.isArray(parsed.opportunities) ? parsed.opportunities : [];
 
-    const created = await Opportunity.insertMany(
-      items.map((o) => ({
-        userId: req.user.id,
-        title: o.title || "Untitled opportunity",
-        description: o.description || "",
-        category: o.category || "other",
-        region,
-        score: clampInt(o.score, { min: 0, max: 100, fallback: 50 }),
-        tags: Array.isArray(o.tags) ? o.tags : [],
-        sourceUrl: o.sourceUrl || undefined,
-        metadata: { timeframe, interests, skills },
-      }))
-    );
+    const docs = items.map((o) => ({
+      userId: req.user.id,
+      title: o.title || "Untitled opportunity",
+      description: o.description || "",
+      category: o.category || "other",
+      region,
+      score: clampInt(o.score, { min: 0, max: 100, fallback: 50 }),
+      tags: Array.isArray(o.tags) ? o.tags : [],
+      sourceUrl: o.sourceUrl || undefined,
+      metadata: { timeframe, interests, skills },
+    }));
 
-    return res.status(201).json({ opportunities: created });
+    let opportunities = docs;
+    if (dbReady()) {
+      const created = await tryDB(() => Opportunity.insertMany(docs), null);
+      if (created) opportunities = created;
+    }
+    return res.status(201).json({ opportunities });
   } catch (err) {
     console.error("[goieController.generateOpportunities]", err);
     return res.status(500).json({ error: err.message });
   }
 }
 
-/**
- * POST /api/goie/trends
- *
- * Returns global market/job/opportunity trends + insights.
- *
- * Body: { focus?: string (e.g. "AI", "fintech"), region?: string }
- *
- * Example response:
- *   {
- *     "headline": "AI tooling jobs grew 38% YoY in EMEA",
- *     "trends": [{ "label": "Open-source AI hiring", "delta": "+24%", "horizon": "90d", "confidence": 0.78 }],
- *     "insights": ["Specialist > generalist for the next 12 months."],
- *     "actionPrompts": ["Publish one technical thread per week to compound credibility."]
- *   }
- */
 export async function getTrends(req, res) {
   try {
     const focus = req.body?.focus || "global opportunities";
@@ -155,18 +117,13 @@ export async function getTrends(req, res) {
   }
 }
 
-/**
- * DELETE /api/goie/:id
- *
- * Example response: { "ok": true }
- */
 export async function deleteOpportunity(req, res) {
-  try {
-    const result = await Opportunity.deleteOne({ _id: req.params.id, userId: req.user.id });
-    if (!result.deletedCount) return res.status(404).json({ error: "Opportunity not found" });
-    return res.json({ ok: true });
-  } catch (err) {
-    console.error("[goieController.deleteOpportunity]", err);
-    return res.status(500).json({ error: err.message });
+  const result = await tryDB(
+    () => Opportunity.deleteOne({ _id: req.params.id, userId: req.user.id }),
+    null
+  );
+  if (!result || !result.deletedCount) {
+    return res.status(404).json({ error: "Opportunity not found" });
   }
+  return res.json({ ok: true });
 }

@@ -34,10 +34,10 @@ A separate Node + Express + MongoDB API lives in `backend/` so it doesn't collid
 - **Entry:** `backend/server.js` (Express + WebSocket on the same HTTP server)
 - **Port:** `3001` (configurable via `PORT`); host `0.0.0.0`
 - **Workflow:** `Backend API` runs `cd backend && npm run dev` (console output, port 3001).
-- **Auth:** JWT via `Authorization: Bearer <token>` (`backend/src/utils/verifyToken.js`)
+- **Auth:** JWT via `Authorization: Bearer <token>` (`backend/src/utils/verifyToken.js`). When no JWT is provided, an anonymous **guest** user is auto-created via the `aurora.guest` httpOnly cookie so every feature works without sign-in. Use `requireRealUser` middleware to gate endpoints that must reject guests.
 - **Voice login:** Whisper API transcription via `backend/src/utils/voiceLogin.js` (multer in-memory upload)
 - **AI:** OpenAI client in `backend/src/config/openai.js` (chat for AI features, voice companion over WebSocket at `/ws/voice`)
-- **Models:** `User`, `Session`, `Opportunity` (Mongoose). `bufferTimeoutMS=1500` so calls fail fast when no DB is configured.
+- **Models:** `User`, `Session`, `Opportunity` (Mongoose). `bufferTimeoutMS=1500` so calls fail fast when no DB is configured. All controllers wrap DB operations with `tryDB(fn, fallback)` from `backend/src/utils/db.js`, so AI responses are always returned to the client even when MongoDB is unavailable — persistence is best-effort.
 - **CORS:** `FRONTEND_URL` env var (comma-separated origins). When unset, all origins are allowed (dev default).
 - **All 13 features mounted under `/api/*`:**
   `auth` (incl. `voice-login`), `ai/chat`, `command-center`, `reality`, `identity` (incl. `evolution`),
@@ -48,6 +48,7 @@ A separate Node + Express + MongoDB API lives in `backend/` so it doesn't collid
 ### Frontend ↔ backend wiring
 - `vite.config.ts` proxies `/api/*` and `/ws/voice` from port 5000 → `BACKEND_URL` (default `http://localhost:3001`). The frontend uses **relative URLs** so the same code works in dev, behind the Replit iframe proxy, and in production.
 - `src/lib/api.ts` is a typed fetch client covering every feature, plus `openVoiceCompanion()` for the streaming WebSocket.
+- Every feature route (`dashboard`, `multiverse`, `voice`, `goie`, `mind`, `cinematic`, `ethics`, `identity`) is now fully wired with input forms, loading/error states, and live AI result rendering — no more mock data.
 
 ### Tests, Postman, WebSocket demo
 - **Test scripts:** `backend/tests/test-{voice-login,ai-chat,goie,multiverse,cinematic}.js`. Run all with `cd backend && npm test`. They wire-test each route, validate auth/400/401 contracts, and SKIP DB-backed assertions cleanly when `MONGODB_URI` is not set.

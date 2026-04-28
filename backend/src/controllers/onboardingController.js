@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import { openai } from "../config/openai.js";
 import { safeJSON } from "../utils/validate.js";
+import { tryDB, dbReady } from "../utils/db.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 
@@ -14,57 +15,30 @@ const ONBOARDING_QUESTIONS = [
   { id: "skills", prompt: "List 3 skills you're proud of and 1 you wish you had.", field: "skills" },
 ];
 
-/**
- * POST /api/onboarding/start — initializes onboarding state and returns the first question.
- *
- * Example response:
- *   {
- *     "step": 1,
- *     "totalSteps": 7,
- *     "question": { "id": "name", "prompt": "What should Aurora call you?" },
- *     "progressPct": 14
- *   }
- */
-export async function startOnboarding(req, res) {
-  try {
-    await User.findByIdAndUpdate(req.user.id, {
-      $set: {
-        "settings.onboarding": { step: 0, answers: {}, startedAt: new Date(), completed: false },
-      },
-    });
-    const q = ONBOARDING_QUESTIONS[0];
-    return res.json({
-      step: 1,
-      totalSteps: ONBOARDING_QUESTIONS.length,
-      question: { id: q.id, prompt: q.prompt },
-      progressPct: Math.round((1 / ONBOARDING_QUESTIONS.length) * 100),
-    });
-  } catch (err) {
-    console.error("[onboardingController.startOnboarding]", err);
-    return res.status(500).json({ error: err.message });
+const inMemoryOnboarding = new Map();
+
+function getState(userId) {
+  if (!inMemoryOnboarding.has(userId)) {
+    inMemoryOnboarding.set(userId, { step: 0, answers: {}, completed: false });
   }
+  return inMemoryOnboarding.get(userId);
 }
 
-/**
- * POST /api/onboarding/answer
- *
- * Body: { questionId: string, answer: string }
- *
- * Example response (next question):
- *   { "done": false, "step": 3, "totalSteps": 7, "question": { "id": "horizon", "prompt": "..." }, "progressPct": 43 }
- *
- * Example response (final step — returns full profile built by AI):
- *   {
- *     "done": true,
- *     "profile": {
- *       "archetype": "Visionary Builder",
- *       "summary": "...",
- *       "strengths": [...],
- *       "growthEdges": [...],
- *       "recommendedRituals": [...]
- *     }
- *   }
- */
+export async function startOnboarding(req, res) {
+  const fresh = { step: 0, answers: {}, startedAt: new Date(), completed: false };
+  inMemoryOnboarding.set(req.user.id, fresh);
+  await tryDB(() =>
+    User.findByIdAndUpdate(req.user.id, { $set: { "settings.onboarding": fresh } })
+  );
+  const q = ONBOARDING_QUESTIONS[0];
+  return res.json({
+    step: 1,
+    totalSteps: ONBOARDING_QUESTIONS.length,
+    question: { id: q.id, prompt: q.prompt },
+    progressPct: Math.round((1 / ONBOARDING_QUESTIONS.length) * 100),
+  });
+}
+
 export async function answerOnboarding(req, res) {
   try {
     const { questionId, answer } = req.body || {};
@@ -72,24 +46,21 @@ export async function answerOnboarding(req, res) {
       return res.status(400).json({ error: "questionId and answer are required" });
     }
 
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    const state = user.settings?.onboarding || { step: 0, answers: {}, completed: false };
     const idx = ONBOARDING_QUESTIONS.findIndex((q) => q.id === questionId);
     if (idx === -1) return res.status(400).json({ error: `Unknown questionId: ${questionId}` });
 
+    const state = getState(req.user.id);
     state.answers[questionId] = answer;
     state.step = idx + 1;
-
-    if (questionId === "name") user.name = String(answer).trim();
 
     const next = ONBOARDING_QUESTIONS[idx + 1];
 
     if (next) {
-      user.settings = { ...(user.settings || {}), onboarding: state };
-      user.markModified("settings");
-      await user.save();
+      if (dbReady()) {
+        await tryDB(() =>
+          User.findByIdAndUpdate(req.user.id, { $set: { "settings.onboarding": state } })
+        );
+      }
       return res.json({
         done: false,
         step: idx + 2,
@@ -118,11 +89,16 @@ export async function answerOnboarding(req, res) {
     state.completed = true;
     state.completedAt = new Date();
     state.profile = profile;
-    user.settings = { ...(user.settings || {}), onboarding: state };
-    user.identityProfile = { ...(user.identityProfile || {}), ...profile };
-    user.markModified("settings");
-    user.markModified("identityProfile");
-    await user.save();
+
+    await tryDB(() =>
+      User.findByIdAndUpdate(req.user.id, {
+        $set: {
+          "settings.onboarding": state,
+          identityProfile: profile,
+          ...(state.answers.name ? { name: String(state.answers.name).trim() } : {}),
+        },
+      })
+    );
 
     return res.json({ done: true, profile });
   } catch (err) {
@@ -131,29 +107,18 @@ export async function answerOnboarding(req, res) {
   }
 }
 
-/**
- * GET /api/onboarding/profile — returns the built profile and onboarding state.
- *
- * Example response:
- *   {
- *     "completed": true,
- *     "answers": { ... },
- *     "profile": { "archetype": "Visionary Builder", ... }
- *   }
- */
 export async function getOnboardingProfile(req, res) {
-  try {
-    const user = await User.findById(req.user.id).select("settings identityProfile name email");
-    const state = user?.settings?.onboarding || { step: 0, answers: {}, completed: false };
-    return res.json({
-      completed: !!state.completed,
-      step: state.step || 0,
-      totalSteps: ONBOARDING_QUESTIONS.length,
-      answers: state.answers || {},
-      profile: state.profile || user?.identityProfile || null,
-    });
-  } catch (err) {
-    console.error("[onboardingController.getOnboardingProfile]", err);
-    return res.status(500).json({ error: err.message });
-  }
+  const state = inMemoryOnboarding.get(req.user.id);
+  const dbUser = await tryDB(
+    () => User.findById(req.user.id).select("settings identityProfile name email").lean(),
+    null
+  );
+  const merged = state || dbUser?.settings?.onboarding || { step: 0, answers: {}, completed: false };
+  return res.json({
+    completed: !!merged.completed,
+    step: merged.step || 0,
+    totalSteps: ONBOARDING_QUESTIONS.length,
+    answers: merged.answers || {},
+    profile: merged.profile || dbUser?.identityProfile || null,
+  });
 }

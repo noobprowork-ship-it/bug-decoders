@@ -3,6 +3,7 @@ import Session from "../models/Session.js";
 import Opportunity from "../models/Opportunity.js";
 import { openai } from "../config/openai.js";
 import { safeJSON } from "../utils/validate.js";
+import { tryDB } from "../utils/db.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 
@@ -11,28 +12,6 @@ function pct(num, den) {
   return Math.round((num / den) * 100);
 }
 
-/**
- * GET /api/dashboard
- *
- * Dashboard Intelligence Layer — aggregates progress, insights, predictions.
- *
- * Example response:
- *   {
- *     "user": { "name": "Amit", "tier": "pro" },
- *     "metrics": {
- *       "momentumPct": 92,
- *       "opportunitiesCount": 14,
- *       "decisionsCount": 3,
- *       "futureScore": "A+",
- *       "sessionsLast7d": 12,
- *       "sessionsPrior7d": 7
- *     },
- *     "insights": ["Your skill graph crossed escape velocity"],
- *     "predictions": [{ "horizon": "7d", "claim": "...", "confidence": 0.78 }],
- *     "recentActivity": [{ "type": "decision", "title": "...", "at": "..." }],
- *     "topOpportunities": [{ "title": "...", "score": 87 }]
- *   }
- */
 export async function getDashboard(req, res) {
   try {
     const userId = req.user.id;
@@ -40,16 +19,22 @@ export async function getDashboard(req, res) {
     const d7 = new Date(now - 7 * 86400000);
     const d14 = new Date(now - 14 * 86400000);
 
-    const [user, sessionsLast7d, sessionsPrior7d, opportunitiesCount, decisionsCount, recent, topOpps] =
-      await Promise.all([
-        User.findById(userId).select("name email tier identityProfile settings").lean(),
-        Session.countDocuments({ userId, createdAt: { $gte: d7 } }),
-        Session.countDocuments({ userId, createdAt: { $gte: d14, $lt: d7 } }),
-        Opportunity.countDocuments({ userId }),
-        Session.countDocuments({ userId, type: "decision" }),
-        Session.find({ userId }).sort({ updatedAt: -1 }).limit(8).select("type title updatedAt").lean(),
-        Opportunity.find({ userId }).sort({ score: -1 }).limit(5).select("title score category").lean(),
-      ]);
+    const user = await tryDB(
+      () => User.findById(userId).select("name email tier identityProfile settings").lean(),
+      null
+    );
+    const sessionsLast7d = (await tryDB(() => Session.countDocuments({ userId, createdAt: { $gte: d7 } }), 0)) || 0;
+    const sessionsPrior7d = (await tryDB(() => Session.countDocuments({ userId, createdAt: { $gte: d14, $lt: d7 } }), 0)) || 0;
+    const opportunitiesCount = (await tryDB(() => Opportunity.countDocuments({ userId }), 0)) || 0;
+    const decisionsCount = (await tryDB(() => Session.countDocuments({ userId, type: "decision" }), 0)) || 0;
+    const recent = (await tryDB(
+      () => Session.find({ userId }).sort({ updatedAt: -1 }).limit(8).select("type title updatedAt").lean(),
+      []
+    )) || [];
+    const topOpps = (await tryDB(
+      () => Opportunity.find({ userId }).sort({ score: -1 }).limit(5).select("title score category").lean(),
+      []
+    )) || [];
 
     const momentumPct = Math.min(100, sessionsLast7d * 8 + (sessionsPrior7d ? pct(sessionsLast7d, sessionsPrior7d) : 0));
 
@@ -72,7 +57,7 @@ export async function getDashboard(req, res) {
           },
           {
             role: "user",
-            content: `User: ${user?.name || "user"}; Identity: ${JSON.stringify(user?.identityProfile || {})};
+            content: `User: ${user?.name || "Guest"}; Identity: ${JSON.stringify(user?.identityProfile || {})};
 Sessions last 7d: ${sessionsLast7d}; prior 7d: ${sessionsPrior7d};
 Top opportunities: ${JSON.stringify(topOpps)};
 Recent activity: ${JSON.stringify(recent)}.`,
@@ -86,7 +71,11 @@ Recent activity: ${JSON.stringify(recent)}.`,
     }
 
     return res.json({
-      user: { name: user?.name, email: user?.email, tier: user?.tier || "free" },
+      user: {
+        name: user?.name || (req.isGuest ? "Guest" : null),
+        email: user?.email,
+        tier: user?.tier || (req.isGuest ? "guest" : "free"),
+      },
       metrics: {
         momentumPct,
         opportunitiesCount,

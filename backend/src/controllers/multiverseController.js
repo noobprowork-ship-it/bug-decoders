@@ -1,40 +1,10 @@
 import { openai } from "../config/openai.js";
 import Session from "../models/Session.js";
 import { requireFields, safeJSON, clampInt } from "../utils/validate.js";
+import { tryDB } from "../utils/db.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 
-/**
- * POST /api/multiverse/simulate
- *
- * Choice Multiverse Simulator — generates 3 alternate futures for a decision.
- *
- * Body:
- *   {
- *     decision: string,
- *     context?: string,
- *     branches?: number (default 3, clamped 2..5),
- *     horizonYears?: number (default 5, clamped 1..30)
- *   }
- *
- * Example response:
- *   {
- *     "sessionId": "...",
- *     "branches": [
- *       {
- *         "name": "The Builder Path",
- *         "summary": "You ship the MVP solo and grow slowly.",
- *         "probability": 0.42,
- *         "milestones": [{ "year": 1, "event": "MVP launches" }],
- *         "risks": ["burnout"],
- *         "wins": ["full ownership"]
- *       },
- *       ...
- *     ],
- *     "recommended": "The Builder Path",
- *     "rationale": "Aligned with your current energy & values."
- *   }
- */
 export async function simulate(req, res) {
   try {
     if (!requireFields(req.body, ["decision"], res)) return;
@@ -65,36 +35,34 @@ Time horizon: ${horizonYears} years.`,
     const raw = completion.choices?.[0]?.message?.content ?? "{}";
     const parsed = safeJSON(raw, { branches: [] });
 
-    const session = await Session.create({
-      userId: req.user.id,
-      type: "multiverse",
-      title: decision.slice(0, 80),
-      messages: [
-        { role: "user", content: decision },
-        { role: "assistant", content: raw },
-      ],
-      metadata: { decision, branches, horizonYears, context },
-    });
+    const session = await tryDB(() =>
+      Session.create({
+        userId: req.user.id,
+        type: "multiverse",
+        title: decision.slice(0, 80),
+        messages: [
+          { role: "user", content: decision },
+          { role: "assistant", content: raw },
+        ],
+        metadata: { decision, branches, horizonYears, context },
+      })
+    );
 
-    return res.json({ sessionId: session._id, ...parsed });
+    return res.json({ sessionId: session?._id || null, ...parsed });
   } catch (err) {
     console.error("[multiverseController.simulate]", err);
     return res.status(500).json({ error: err.message });
   }
 }
 
-/**
- * GET /api/multiverse — list past simulations.
- */
 export async function listSimulations(req, res) {
-  try {
-    const sims = await Session.find({ userId: req.user.id, type: "multiverse" })
-      .sort({ updatedAt: -1 })
-      .limit(50)
-      .lean();
-    return res.json({ simulations: sims });
-  } catch (err) {
-    console.error("[multiverseController.listSimulations]", err);
-    return res.status(500).json({ error: err.message });
-  }
+  const sims = await tryDB(
+    () =>
+      Session.find({ userId: req.user.id, type: "multiverse" })
+        .sort({ updatedAt: -1 })
+        .limit(50)
+        .lean(),
+    []
+  );
+  return res.json({ simulations: sims || [] });
 }

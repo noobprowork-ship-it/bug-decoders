@@ -1,29 +1,10 @@
 import { openai } from "../config/openai.js";
 import Session from "../models/Session.js";
 import { requireFields } from "../utils/validate.js";
+import { tryDB } from "../utils/db.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 
-/**
- * POST /api/ai/chat
- *
- * Generic AI chat endpoint backing the Life Command Center conversation surface.
- *
- * Body:
- *   {
- *     messages: [{ role: "user"|"assistant", content: string }],
- *     system?: string,
- *     sessionId?: string,
- *     type?: "chat"|"voice"|"mind"|"multiverse"|"cinematic"|"decision"|"identity"|"goie"
- *   }
- *
- * Example response:
- *   {
- *     "reply": "Here are the three highest-leverage moves you can make this week…",
- *     "sessionId": "65f1c2b3a8d2e1d4f6a8b9c0",
- *     "model": "gpt-4o-mini"
- *   }
- */
 export async function chat(req, res) {
   try {
     if (!requireFields(req.body, ["messages"], res)) return;
@@ -49,24 +30,24 @@ export async function chat(req, res) {
 
     const reply = completion.choices?.[0]?.message?.content ?? "";
 
-    let session;
-    if (sessionId) {
-      session = await Session.findOneAndUpdate(
-        { _id: sessionId, userId: req.user.id },
-        {
-          $push: {
-            messages: {
-              $each: [
-                ...messages.map((m) => ({ role: m.role, content: m.content })),
-                { role: "assistant", content: reply },
-              ],
+    const session = await tryDB(async () => {
+      if (sessionId) {
+        return Session.findOneAndUpdate(
+          { _id: sessionId, userId: req.user.id },
+          {
+            $push: {
+              messages: {
+                $each: [
+                  ...messages.map((m) => ({ role: m.role, content: m.content })),
+                  { role: "assistant", content: reply },
+                ],
+              },
             },
           },
-        },
-        { new: true }
-      );
-    } else {
-      session = await Session.create({
+          { new: true }
+        );
+      }
+      return Session.create({
         userId: req.user.id,
         type,
         title: messages[0]?.content?.slice(0, 80) || "Conversation",
@@ -75,47 +56,33 @@ export async function chat(req, res) {
           { role: "assistant", content: reply },
         ],
       });
-    }
+    });
 
-    return res.json({ reply, sessionId: session?._id, model: CHAT_MODEL });
+    return res.json({ reply, sessionId: session?._id || null, model: CHAT_MODEL });
   } catch (err) {
     console.error("[aiController.chat]", err);
     return res.status(500).json({ error: err.message });
   }
 }
 
-/**
- * GET /api/ai/sessions
- *
- * Example response:
- *   { "sessions": [{ "_id": "...", "type": "chat", "title": "...", "updatedAt": "..." }] }
- */
 export async function listSessions(req, res) {
-  try {
-    const sessions = await Session.find({ userId: req.user.id })
-      .sort({ updatedAt: -1 })
-      .limit(50)
-      .select("type title updatedAt createdAt metadata")
-      .lean();
-    return res.json({ sessions });
-  } catch (err) {
-    console.error("[aiController.listSessions]", err);
-    return res.status(500).json({ error: err.message });
-  }
+  const sessions = await tryDB(
+    () =>
+      Session.find({ userId: req.user.id })
+        .sort({ updatedAt: -1 })
+        .limit(50)
+        .select("type title updatedAt createdAt metadata")
+        .lean(),
+    []
+  );
+  return res.json({ sessions: sessions || [] });
 }
 
-/**
- * GET /api/ai/sessions/:id
- *
- * Example response: { "session": { "_id": "...", "messages": [...], "metadata": {...} } }
- */
 export async function getSession(req, res) {
-  try {
-    const session = await Session.findOne({ _id: req.params.id, userId: req.user.id }).lean();
-    if (!session) return res.status(404).json({ error: "Session not found" });
-    return res.json({ session });
-  } catch (err) {
-    console.error("[aiController.getSession]", err);
-    return res.status(500).json({ error: err.message });
-  }
+  const session = await tryDB(
+    () => Session.findOne({ _id: req.params.id, userId: req.user.id }).lean(),
+    null
+  );
+  if (!session) return res.status(404).json({ error: "Session not found" });
+  return res.json({ session });
 }

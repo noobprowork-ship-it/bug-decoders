@@ -1,122 +1,171 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { Shell } from "@/components/aurora/Shell";
-import { GlowCard, PageHeader, StatChip } from "@/components/aurora/ui";
-import { Globe2, TrendingUp, Briefcase, Zap } from "lucide-react";
+import { GlowCard, PageHeader, NeonButton } from "@/components/aurora/ui";
+import { Globe2, Sparkles, Loader2, AlertTriangle, TrendingUp, ExternalLink } from "lucide-react";
+import { goie } from "@/lib/api";
 
 export const Route = createFileRoute("/goie")({
-  head: () => ({ meta: [{ title: "GOIE — Global Opportunity Intelligence" }] }),
-  component: GOIE,
+  head: () => ({ meta: [{ title: "GOIE — Aurora Mind OS" }] }),
+  component: Goie,
 });
 
-const opportunities = [
-  { title: "AI Safety Engineer", growth: "+312%", region: "Global", match: 94 },
-  { title: "Climate Systems Architect", growth: "+186%", region: "EU · IN", match: 88 },
-  { title: "Bio-Compute Researcher", growth: "+241%", region: "US · SG", match: 82 },
-  { title: "Synthetic Media Director", growth: "+155%", region: "Global", match: 76 },
-];
+type Opp = {
+  title: string;
+  description?: string;
+  category?: string;
+  region?: string;
+  score?: number;
+  tags?: string[];
+  sourceUrl?: string;
+};
 
-function GOIE() {
+type Trend = { label: string; delta: string; horizon: string; confidence: number };
+type Trends = { headline?: string; trends?: Trend[]; insights?: string[]; actionPrompts?: string[] };
+
+function Goie() {
+  const [interests, setInterests] = useState("AI, design, indie products");
+  const [skills, setSkills] = useState("React, prompt engineering");
+  const [region, setRegion] = useState("global");
+  const [count, setCount] = useState(5);
+  const [opps, setOpps] = useState<Opp[]>([]);
+  const [trends, setTrends] = useState<Trends | null>(null);
+  const [loading, setLoading] = useState<"none" | "opps" | "trends">("none");
+  const [error, setError] = useState<string | null>(null);
+
+  async function onGenerate() {
+    setLoading("opps");
+    setError(null);
+    try {
+      const data = await goie.generate({
+        interests: interests.split(",").map((s) => s.trim()).filter(Boolean),
+        skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
+        region,
+        count,
+      }) as { opportunities: Opp[] };
+      setOpps(data.opportunities || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to generate opportunities");
+    } finally {
+      setLoading("none");
+    }
+  }
+
+  async function onTrends() {
+    setLoading("trends");
+    setError(null);
+    try {
+      const data = await goie.trends({ focus: interests || "AI", region }) as Trends;
+      setTrends(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load trends");
+    } finally {
+      setLoading("none");
+    }
+  }
+
   return (
     <Shell>
-      <PageHeader eyebrow="Module 03" icon={Globe2} title="Global Opportunity Intelligence" subtitle="Live signal from world economies, industries, and emerging job graphs — personalized to your trajectory." />
+      <PageHeader
+        eyebrow="Module 02"
+        icon={Globe2}
+        title="Global Opportunity Intelligence Engine"
+        subtitle="Personalized opportunities and trends, generated for who you are right now."
+      />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <StatChip label="Signals" value="2,419" />
-        <StatChip label="Industries" value="38" accent="purple" />
-        <StatChip label="Matches" value="14" accent="pink" />
-        <StatChip label="Velocity" value="↑ 27%" />
-      </div>
-
-      <div className="grid lg:grid-cols-3 gap-4">
-        {/* World viz */}
-        <GlowCard className="lg:col-span-2" glow="blue">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display text-lg font-semibold">World Opportunity Map</h3>
-            <div className="flex gap-2 text-xs">
-              <span className="px-2 py-1 rounded-full bg-primary/20 text-primary">Live</span>
-            </div>
-          </div>
-          <div className="relative aspect-[2/1] rounded-2xl overflow-hidden bg-background/50 border border-border">
-            <svg viewBox="0 0 800 400" className="w-full h-full">
-              <defs>
-                <radialGradient id="dot">
-                  <stop offset="0%" stopColor="oklch(0.78 0.18 230)" />
-                  <stop offset="100%" stopColor="oklch(0.78 0.18 230 / 0)" />
-                </radialGradient>
-              </defs>
-              {/* Grid */}
-              {Array.from({ length: 16 }).map((_, i) => (
-                <line key={`h${i}`} x1="0" y1={i * 25} x2="800" y2={i * 25} stroke="oklch(1 0 0 / 0.04)" />
-              ))}
-              {Array.from({ length: 32 }).map((_, i) => (
-                <line key={`v${i}`} x1={i * 25} y1="0" x2={i * 25} y2="400" stroke="oklch(1 0 0 / 0.04)" />
-              ))}
-              {/* Stylized continents (simple blobs) */}
-              {[
-                [120, 130, 80], [250, 110, 50], [380, 140, 70], [520, 120, 60], [630, 180, 75], [180, 270, 55], [430, 260, 65], [600, 280, 50],
-              ].map(([x,y,r],i)=>(
-                <ellipse key={i} cx={x} cy={y} rx={r as number} ry={(r as number)*0.55} fill="oklch(0.2 0.04 270 / 0.6)" stroke="oklch(0.78 0.18 230 / 0.3)" />
-              ))}
-              {/* Data points */}
-              {[[180,140,30],[260,120,18],[400,150,24],[540,130,20],[640,200,28],[460,260,22],[200,270,16]].map(([x,y,s],i)=>(
-                <g key={i}>
-                  <circle cx={x} cy={y} r={s} fill="url(#dot)" opacity="0.8">
-                    <animate attributeName="r" values={`${s};${(s as number)+8};${s}`} dur="3s" repeatCount="indefinite" />
-                  </circle>
-                  <circle cx={x} cy={y} r="3" fill="oklch(0.7 0.22 320)" />
-                </g>
-              ))}
-              {/* Connections */}
-              <path d="M180,140 Q300,60 540,130" stroke="oklch(0.7 0.22 295 / 0.6)" strokeWidth="1.5" fill="none" strokeDasharray="4 4" />
-              <path d="M540,130 Q580,200 640,200" stroke="oklch(0.7 0.22 320 / 0.6)" strokeWidth="1.5" fill="none" strokeDasharray="4 4" />
-            </svg>
-          </div>
-        </GlowCard>
-
-        {/* Top sectors */}
-        <GlowCard glow="purple">
-          <h3 className="font-display text-lg font-semibold mb-4">Surging Sectors</h3>
-          <div className="space-y-3">
-            {[{ n: "AI Infrastructure", p: 94 }, { n: "Climate Tech", p: 78 }, { n: "Biotech", p: 71 }, { n: "Space Logistics", p: 62 }, { n: "Synthetic Media", p: 55 }].map((s) => (
-              <div key={s.n}>
-                <div className="flex justify-between text-xs mb-1">
-                  <span>{s.n}</span>
-                  <span className="text-primary">{s.p}%</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
-                  <div className="h-full bg-aurora" style={{ width: `${s.p}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </GlowCard>
-      </div>
-
-      {/* Opportunities */}
-      <div className="mt-6">
-        <h3 className="font-display text-xl font-semibold mb-4 flex items-center gap-2"><Briefcase className="h-5 w-5 text-primary" /> Personalized Career Matches</h3>
+      <GlowCard glow="blue" className="mb-6">
         <div className="grid md:grid-cols-2 gap-4">
-          {opportunities.map((o, i) => (
-            <GlowCard key={o.title} glow={i % 2 ? "pink" : "blue"} className="animate-rise" >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">{o.region}</div>
-                  <h4 className="font-display text-lg font-semibold mt-1">{o.title}</h4>
+          <div>
+            <label className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Interests (comma-separated)</label>
+            <input value={interests} onChange={(e) => setInterests(e.target.value)} className="mt-2 w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Skills (comma-separated)</label>
+            <input value={skills} onChange={(e) => setSkills(e.target.value)} className="mt-2 w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Region</label>
+            <input value={region} onChange={(e) => setRegion(e.target.value)} placeholder="global, EMEA, India…" className="mt-2 w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">How many ({count})</label>
+            <input type="range" min={3} max={10} value={count} onChange={(e) => setCount(Number(e.target.value))} className="w-full mt-3 accent-primary" />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-3 mt-5">
+          <NeonButton onClick={onGenerate} disabled={loading !== "none"}>
+            {loading === "opps" ? <><Loader2 className="inline h-4 w-4 mr-2 animate-spin" /> Generating</> : <><Sparkles className="inline h-4 w-4 mr-2" /> Generate opportunities</>}
+          </NeonButton>
+          <NeonButton variant="ghost" onClick={onTrends} disabled={loading !== "none"}>
+            {loading === "trends" ? <><Loader2 className="inline h-4 w-4 mr-2 animate-spin" /> Scanning</> : <><TrendingUp className="inline h-4 w-4 mr-2" /> Show trends</>}
+          </NeonButton>
+        </div>
+      </GlowCard>
+
+      {error && (
+        <GlowCard glow="pink" className="mb-6">
+          <div className="flex items-start gap-3 text-sm">
+            <AlertTriangle className="h-4 w-4 text-[oklch(0.7_0.22_320)] mt-0.5 shrink-0" />
+            <div>{error}</div>
+          </div>
+        </GlowCard>
+      )}
+
+      {trends && (
+        <GlowCard glow="purple" className="mb-6">
+          {trends.headline && <h3 className="font-display text-xl font-bold mb-3">{trends.headline}</h3>}
+          {trends.trends && trends.trends.length > 0 && (
+            <div className="grid sm:grid-cols-2 gap-3 mb-4">
+              {trends.trends.map((t, i) => (
+                <div key={i} className="glass rounded-2xl p-4">
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{t.horizon}</div>
+                  <div className="font-medium text-sm mt-1">{t.label}</div>
+                  <div className="flex items-center justify-between mt-2 text-xs">
+                    <span className="text-primary font-bold">{t.delta}</span>
+                    <span className="text-muted-foreground">conf {Math.round((t.confidence || 0) * 100)}%</span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-1 text-xs text-primary"><TrendingUp className="h-3 w-3" /> {o.growth}</div>
-                </div>
+              ))}
+            </div>
+          )}
+          {trends.insights && trends.insights.length > 0 && (
+            <div className="text-sm space-y-1">
+              {trends.insights.map((i, idx) => <div key={idx}>· {i}</div>)}
+            </div>
+          )}
+          {trends.actionPrompts && trends.actionPrompts.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-white/5">
+              <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Try this</div>
+              {trends.actionPrompts.map((a, i) => <div key={i} className="text-sm">→ {a}</div>)}
+            </div>
+          )}
+        </GlowCard>
+      )}
+
+      {opps.length > 0 && (
+        <div className="grid md:grid-cols-2 gap-4">
+          {opps.map((o, i) => (
+            <GlowCard key={i} glow={i % 2 === 0 ? "blue" : "pink"} className="animate-rise">
+              <div className="flex items-start justify-between mb-3 gap-3">
+                <h3 className="font-display text-base font-bold">{o.title}</h3>
+                <div className="text-2xl font-display font-bold text-gradient shrink-0">{o.score ?? "—"}</div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-1.5 rounded-full bg-white/5">
-                  <div className="h-full bg-aurora rounded-full" style={{ width: `${o.match}%` }} />
+              <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">{o.category} · {o.region || region}</div>
+              {o.description && <p className="text-sm text-muted-foreground mb-3">{o.description}</p>}
+              {o.tags && o.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {o.tags.map((t, idx) => <span key={idx} className="glass rounded-full px-2 py-0.5 text-[10px]">{t}</span>)}
                 </div>
-                <span className="text-xs text-muted-foreground">{o.match}% match</span>
-              </div>
+              )}
+              {o.sourceUrl && (
+                <a href={o.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                  Source <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
             </GlowCard>
           ))}
         </div>
-      </div>
+      )}
     </Shell>
   );
 }
