@@ -9,8 +9,56 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VoiceRouteImport } from './routes/voice'
+import { Route as MultiverseRouteImport } from './routes/multiverse'
+import { Route as MindRouteImport } from './routes/mind'
+import { Route as IdentityRouteImport } from './routes/identity'
+import { Route as GoieRouteImport } from './routes/goie'
+import { Route as EthicsRouteImport } from './routes/ethics'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CinematicRouteImport } from './routes/cinematic'
 import { Route as IndexRouteImport } from './routes/index'
 
+const VoiceRoute = VoiceRouteImport.update({
+  id: '/voice',
+  path: '/voice',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MultiverseRoute = MultiverseRouteImport.update({
+  id: '/multiverse',
+  path: '/multiverse',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MindRoute = MindRouteImport.update({
+  id: '/mind',
+  path: '/mind',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IdentityRoute = IdentityRouteImport.update({
+  id: '/identity',
+  path: '/identity',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GoieRoute = GoieRouteImport.update({
+  id: '/goie',
+  path: '/goie',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EthicsRoute = EthicsRouteImport.update({
+  id: '/ethics',
+  path: '/ethics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CinematicRoute = CinematicRouteImport.update({
+  id: '/cinematic',
+  path: '/cinematic',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +67,144 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/cinematic': typeof CinematicRoute
+  '/dashboard': typeof DashboardRoute
+  '/ethics': typeof EthicsRoute
+  '/goie': typeof GoieRoute
+  '/identity': typeof IdentityRoute
+  '/mind': typeof MindRoute
+  '/multiverse': typeof MultiverseRoute
+  '/voice': typeof VoiceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/cinematic': typeof CinematicRoute
+  '/dashboard': typeof DashboardRoute
+  '/ethics': typeof EthicsRoute
+  '/goie': typeof GoieRoute
+  '/identity': typeof IdentityRoute
+  '/mind': typeof MindRoute
+  '/multiverse': typeof MultiverseRoute
+  '/voice': typeof VoiceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/cinematic': typeof CinematicRoute
+  '/dashboard': typeof DashboardRoute
+  '/ethics': typeof EthicsRoute
+  '/goie': typeof GoieRoute
+  '/identity': typeof IdentityRoute
+  '/mind': typeof MindRoute
+  '/multiverse': typeof MultiverseRoute
+  '/voice': typeof VoiceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/cinematic'
+    | '/dashboard'
+    | '/ethics'
+    | '/goie'
+    | '/identity'
+    | '/mind'
+    | '/multiverse'
+    | '/voice'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/cinematic'
+    | '/dashboard'
+    | '/ethics'
+    | '/goie'
+    | '/identity'
+    | '/mind'
+    | '/multiverse'
+    | '/voice'
+  id:
+    | '__root__'
+    | '/'
+    | '/cinematic'
+    | '/dashboard'
+    | '/ethics'
+    | '/goie'
+    | '/identity'
+    | '/mind'
+    | '/multiverse'
+    | '/voice'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CinematicRoute: typeof CinematicRoute
+  DashboardRoute: typeof DashboardRoute
+  EthicsRoute: typeof EthicsRoute
+  GoieRoute: typeof GoieRoute
+  IdentityRoute: typeof IdentityRoute
+  MindRoute: typeof MindRoute
+  MultiverseRoute: typeof MultiverseRoute
+  VoiceRoute: typeof VoiceRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/voice': {
+      id: '/voice'
+      path: '/voice'
+      fullPath: '/voice'
+      preLoaderRoute: typeof VoiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/multiverse': {
+      id: '/multiverse'
+      path: '/multiverse'
+      fullPath: '/multiverse'
+      preLoaderRoute: typeof MultiverseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mind': {
+      id: '/mind'
+      path: '/mind'
+      fullPath: '/mind'
+      preLoaderRoute: typeof MindRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/identity': {
+      id: '/identity'
+      path: '/identity'
+      fullPath: '/identity'
+      preLoaderRoute: typeof IdentityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/goie': {
+      id: '/goie'
+      path: '/goie'
+      fullPath: '/goie'
+      preLoaderRoute: typeof GoieRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ethics': {
+      id: '/ethics'
+      path: '/ethics'
+      fullPath: '/ethics'
+      preLoaderRoute: typeof EthicsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cinematic': {
+      id: '/cinematic'
+      path: '/cinematic'
+      fullPath: '/cinematic'
+      preLoaderRoute: typeof CinematicRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,6 +217,14 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CinematicRoute: CinematicRoute,
+  DashboardRoute: DashboardRoute,
+  EthicsRoute: EthicsRoute,
+  GoieRoute: GoieRoute,
+  IdentityRoute: IdentityRoute,
+  MindRoute: MindRoute,
+  MultiverseRoute: MultiverseRoute,
+  VoiceRoute: VoiceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
