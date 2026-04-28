@@ -1,7 +1,11 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Globe2, GitBranch, Clapperboard, Brain, Mic, Sparkles } from "lucide-react";
-import type { ReactNode } from "react";
+import { Home, Globe2, GitBranch, Clapperboard, Brain, Mic, Sparkles, Compass } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
 import { AssistantBot } from "./AssistantBot";
+import { ThemeToggle } from "./ThemeToggle";
+import { trackView } from "@/lib/activityTracker";
+import { applyStoredTheme } from "@/lib/theme";
+import { getStoredUser } from "@/lib/user";
 
 const nav = [
   { to: "/dashboard", label: "Home", icon: Home },
@@ -9,11 +13,24 @@ const nav = [
   { to: "/multiverse", label: "Multiverse", icon: GitBranch },
   { to: "/cinematic", label: "Cinematic", icon: Clapperboard },
   { to: "/mind", label: "Mind", icon: Brain },
+  { to: "/explore", label: "Explore", icon: Compass },
   { to: "/voice", label: "Voice AI", icon: Mic },
 ] as const;
 
 export function Shell({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
+
+  // Apply stored theme + record this page view (Explore feature uses this).
+  useEffect(() => {
+    applyStoredTheme();
+  }, []);
+  useEffect(() => {
+    trackView(path);
+  }, [path]);
+
+  const user = getStoredUser();
+  const initial = (user?.name || user?.email || "L").slice(0, 1).toUpperCase();
+  const displayName = user?.name || (user?.email ? user.email.split("@")[0] : "You");
 
   return (
     <div className="min-h-screen flex">
@@ -51,10 +68,16 @@ export function Shell({ children }: { children: ReactNode }) {
             })}
           </nav>
 
+          <div className="mt-3 mb-3 flex items-center justify-between">
+            <ThemeToggle />
+          </div>
+
           <div className="glass rounded-2xl p-3 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-aurora flex items-center justify-center text-xs font-bold text-primary-foreground">L</div>
+            <div className="h-9 w-9 rounded-full bg-aurora flex items-center justify-center text-xs font-bold text-primary-foreground">
+              {initial}
+            </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate">You</div>
+              <div className="text-sm font-medium truncate">{displayName}</div>
               <div className="text-[10px] text-muted-foreground">Online · LifeOS ready</div>
             </div>
           </div>
@@ -69,9 +92,12 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
           <span className="font-display font-bold text-sm">LIFEOS</span>
         </Link>
-        <Link to="/voice" className="h-9 w-9 rounded-full bg-aurora flex items-center justify-center animate-pulse-glow">
-          <Mic className="h-4 w-4 text-primary-foreground" />
-        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle compact />
+          <Link to="/voice" className="h-9 w-9 rounded-full bg-aurora flex items-center justify-center animate-pulse-glow">
+            <Mic className="h-4 w-4 text-primary-foreground" />
+          </Link>
+        </div>
       </header>
 
       {/* Main */}

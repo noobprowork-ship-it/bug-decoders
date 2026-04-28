@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Mail, Mic, ChromeIcon, Loader2, AlertTriangle, Square, Sparkles } from "lucide-react";
 import { auth, setToken } from "@/lib/api";
+import { setStoredUser } from "@/lib/user";
 
 export type LoginMode = "email" | "voice" | "google";
 
@@ -61,6 +62,11 @@ function EmailPanel({ onSuccess }: { onSuccess: () => void }) {
           ? await auth.login({ email: email.trim(), password })
           : await auth.register({ name: name.trim() || undefined, email: email.trim(), password });
       setToken(resp.token);
+      setStoredUser({
+        id: (resp.user as { id?: string })?.id,
+        email: resp.user?.email,
+        name: (resp.user as { name?: string })?.name || (tab === "signup" ? name.trim() || undefined : undefined),
+      });
       onSuccess();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Something went wrong");
@@ -191,6 +197,11 @@ function VoicePanel({ onSuccess }: { onSuccess: () => void }) {
     try {
       const resp = await auth.voiceLogin(email.trim(), audio);
       setToken(resp.token);
+      setStoredUser({
+        id: resp.user?.id,
+        email: resp.user?.email,
+        name: (resp.user as { name?: string })?.name,
+      });
       setTranscript(resp.transcript || null);
       setTimeout(onSuccess, 700);
     } catch (e) {
@@ -280,6 +291,12 @@ function GooglePanel({ onSuccess }: { onSuccess: () => void }) {
     try {
       const resp = await auth.googleDemo({ name: name.trim() || undefined });
       setToken(resp.token);
+      setStoredUser({
+        id: resp.user?.id,
+        email: resp.user?.email,
+        name: resp.user?.name || (name.trim() || undefined),
+        tier: resp.user?.tier,
+      });
       onSuccess();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Google sign-in failed.");

@@ -1,0 +1,62 @@
+Develop and integrate a new core feature named “Explore” into the application with the following capabilities:
+
+1. Activity Monitoring & Intelligence Engine
+Continuously monitor user activity across the device, including:
+Screen time usage (per app and total)
+User engagement patterns
+Search history and interaction behavior
+Store and process this data securely and efficiently.
+Generate periodic insights such as:
+Daily/weekly usage reports
+App-wise engagement breakdown
+Based on collected data, implement an intelligent analysis system that:
+Identifies hidden user skills, interests, and behavioral patterns
+Suggests potential career paths, skills to develop, or activities to pursue
+2. Voice AI System (Critical Fix + Upgrade)
+Fix all issues where the Voice AI is currently not working.
+Ensure:
+Real-time voice interaction (low latency)
+Continuous listening (when enabled)
+Natural conversational responses
+Implement a female voice assistant with:
+Human-like tone and adaptive response style
+Context-aware conversations
+Ability to guide users through app features step-by-step
+3. UI/UX Improvements
+Add a Dark Mode / Light Mode toggle in the dashboard:
+Smooth switching between themes
+Persist user preference across sessions
+Fix Mind Map (Mind Feature):
+Ensure maps are fully responsive
+Proper scaling and fitting within all screen sizes
+Enable zoom/pan if needed
+4. Cinematic Feature (Image Generation Fix)
+Resolve the issue where images are not being generated.
+Ensure:
+Reliable image generation for all scenarios
+Outputs match the described scenes accurately
+Fast processing with fallback handling if generation fails
+5. Voice Login System
+Implement seamless voice-based login:
+User should be able to log in directly using voice commands
+Ensure proper authentication and security
+Minimize latency and errors
+6. Home Screen Enhancements
+Display the user’s name (captured during login) prominently on the home screen
+Ensure:
+All home screen features function correctly
+No broken or unresponsive elements
+7. Performance Optimization
+Optimize the entire application for:
+Fast response times
+Minimal lag
+Efficient data handling
+Ensure all features work smoothly without delays
+8. Reliability & Testing
+Fix all existing bugs affecting:
+Voice AI
+Image generation
+UI responsiveness
+Conduct thorough testing to ensure:
+Stability across devices
+Consistent performance under load

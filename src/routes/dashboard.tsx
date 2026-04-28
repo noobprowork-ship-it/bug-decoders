@@ -2,8 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Shell } from "@/components/aurora/Shell";
 import { GlowCard, PageHeader, StatChip, NeonButton } from "@/components/aurora/ui";
-import { Sparkles, Mic, ArrowUpRight, Globe2, GitBranch, Brain, Clapperboard, Loader2 } from "lucide-react";
+import { Sparkles, Mic, ArrowUpRight, Globe2, GitBranch, Brain, Clapperboard, Compass, Loader2 } from "lucide-react";
 import { dashboard } from "@/lib/api";
+import { getStoredUser } from "@/lib/user";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — LifeOS" }] }),
@@ -38,7 +39,12 @@ function Dashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  const name = data?.user?.name || "friend";
+  const stored = getStoredUser();
+  const name =
+    data?.user?.name ||
+    stored?.name ||
+    (stored?.email ? stored.email.split("@")[0] : null) ||
+    "friend";
   const m = data?.metrics;
 
   return (
@@ -129,6 +135,7 @@ function Dashboard() {
         <ModuleTile to="/multiverse" title="Multiverse" desc="Simulate parallel paths" icon={GitBranch} glow="purple" />
         <ModuleTile to="/cinematic" title="Cinematic" desc="Your future, as a film" icon={Clapperboard} glow="pink" />
         <ModuleTile to="/mind" title="Mind Universe" desc="Map your inner cosmos" icon={Brain} glow="purple" />
+        <ModuleTile to="/explore" title="Explore" desc="Decode your behavior" icon={Compass} glow="blue" />
       </div>
 
       {(data?.recentActivity?.length || data?.topOpportunities?.length) ? (

@@ -4,6 +4,14 @@
 A TanStack Start (React 19 + Vite 7) single-page/SSR application themed as **"LifeOS — Your Life, Operated"** (formerly "Aurora Mind OS"). UI is built with shadcn-style components (Radix UI primitives + Tailwind CSS v4). All visible product copy uses LifeOS branding; the `src/components/aurora/` folder name is preserved internally to avoid breaking imports.
 
 ## Recent Changes (2026-04-28)
+- **Explore feature** added: new sidebar route `/explore` (`src/routes/explore.tsx`) backed by `POST /api/explore/insights` (`backend/src/controllers/exploreController.js` + `backend/src/routes/explore.js`). Frontend tracks anonymous in-app activity in `localStorage` via `src/lib/activityTracker.ts` (page-view + action events with 7-day rollups). The Explore page shows an activity dashboard (sessions, actions, in-app minutes, top pages, top actions) and a "Generate insights" button that posts the rolled-up summary to the backend, which returns a structured behavioral report (engagement score, hidden skills, interests, behavior patterns, career paths, recommendations, weekly report). Works without the AI provider thanks to a deterministic local fallback.
+- **Theme toggle** added: light/dark switcher in the sidebar (`src/components/aurora/ThemeToggle.tsx`, helpers in `src/lib/theme.ts`). The choice is persisted to `localStorage` and applied via a `.light` / `.dark` class on `<html>`. A new `.light` palette in `src/styles.css` reskins surfaces (background, glass, borders) while keeping the LifeOS neon primary/accent colors.
+- **Voice replies** added to the AI Assistant + Voice page: assistant streams now finish with browser SpeechSynthesis playback in a female voice (`src/lib/voice.ts` — picks Samantha / Aria / Jenny / Zira when available, falls back to any English female voice). A speaker (Volume2/VolumeX) toggle in both UIs lets the user mute, and the choice is persisted.
+- **Stored user** added: `src/lib/user.ts` saves the logged-in user's name + email to `localStorage` from all three sign-in flows in `LoginModal` (email, Google demo, voice). The sidebar now shows the real name/initial in the bottom pill, and the dashboard greeting falls back to the stored name when the API hasn't responded yet.
+- **Mind Map UX** upgraded (`src/components/aurora/MindMap.tsx`): zoom in / zoom out / fit-to-screen buttons, ⌘/Ctrl+scroll to zoom, drag-to-pan when zoomed in, fully responsive via SVG `viewBox`.
+- **Cinematic image generation** hardened: `gpt-image-1` is the primary model with an automatic fallback to `dall-e-3` (or whatever is configured via `OPENAI_IMAGE_FALLBACK_MODEL`) so quotas/availability gaps don't break a generation.
+
+## Earlier (2026-04-28)
 - **Rebranded** end-to-end from "Aurora Mind OS" → "LifeOS" (UI strings, page titles, AI system prompts).
 - **Removed** Identity & Ethics features (route files deleted, removed from sidebar nav and dashboard tiles).
 - **Login system** wired: new `LoginModal` (`src/components/aurora/LoginModal.tsx`) supports Email login/signup, Voice login (MediaRecorder → Whisper), and a Google demo flow (`POST /api/auth/google-demo` — creates a `@lifeos.demo` account + JWT since real OAuth isn't configured).
@@ -51,10 +59,10 @@ A separate Node + Express + MongoDB API lives in `backend/` so it doesn't collid
 - **CORS:** `FRONTEND_URL` env var (comma-separated origins). When unset, all origins are allowed (dev default).
 - **Features mounted under `/api/*`:**
   `auth` (incl. `voice-login`, `google-demo`), `ai/chat` + `ai/transcribe` (Whisper), `command-center`, `reality`, `identity` (incl. `evolution`),
-  `multiverse`, `cinematic` (now generates one image per scene), `mind` (decode + explore now return a `mindmap`), `goie` (now returns `sourceUrl` + `sourceName` + `references[]`),
-  `decision`, `activity`, `onboarding`, `dashboard`, plus WS `/ws/voice`.
+  `multiverse`, `cinematic` (image gen with `gpt-image-1` + automatic fallback to `OPENAI_IMAGE_FALLBACK_MODEL` / `dall-e-3`), `mind` (decode + explore now return a `mindmap`), `goie` (now returns `sourceUrl` + `sourceName` + `references[]`),
+  `decision`, `activity`, `onboarding`, `dashboard`, `explore` (behavior intelligence — POST `/api/explore/insights`), plus WS `/ws/voice`.
   (Identity/Ethics frontend routes were removed but the backend identity route is still mounted for backwards compatibility.)
-- **Env:** copy `backend/.env.example` → `backend/.env`. The server boots even when `MONGODB_URI` / `OPENAI_API_KEY` are missing — it logs warnings and AI/DB calls fail with clear, structured errors.
+- **Env:** copy `backend/.env.example` → `backend/.env`. The server boots even when `MONGODB_URI` / `OPENAI_API_KEY` are missing — it logs warnings and AI/DB calls fail with clear, structured errors. Optional `OPENAI_IMAGE_FALLBACK_MODEL` (default `dall-e-3`) controls the Cinematic fallback.
 
 ### Frontend ↔ backend wiring
 - `vite.config.ts` proxies `/api/*` and `/ws/voice` from port 5000 → `BACKEND_URL` (default `http://localhost:3001`). The frontend uses **relative URLs** so the same code works in dev, behind the Replit iframe proxy, and in production.

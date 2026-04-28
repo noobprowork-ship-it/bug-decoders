@@ -30,6 +30,7 @@ import realityRoutes from "./src/routes/reality.js";
 import activityRoutes from "./src/routes/activity.js";
 import onboardingRoutes from "./src/routes/onboarding.js";
 import dashboardRoutes from "./src/routes/dashboard.js";
+import exploreRoutes from "./src/routes/explore.js";
 
 const app = express();
 
@@ -71,6 +72,7 @@ app.use("/api/reality", realityRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/explore", exploreRoutes);
 
 const CLIENT_DIST = path.resolve(__dirname, "..", "dist", "client");
 const SERVER_DIST = path.resolve(__dirname, "..", "dist", "server");
@@ -307,6 +309,7 @@ wss.on("connection", (ws) => {
   POST   /api/onboarding/answer
   GET    /api/onboarding/profile
   GET    /api/dashboard                   (Dashboard Intelligence Layer)
+  POST   /api/explore/insights            (Explore — behavior intelligence)
   WS     /ws/voice                        (AI Voice Companion — streaming)`);
     });
   } catch (err) {

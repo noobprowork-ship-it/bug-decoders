@@ -4,6 +4,8 @@ import { Shell } from "@/components/aurora/Shell";
 import { GlowCard, PageHeader, NeonButton } from "@/components/aurora/ui";
 import { Mic, Send, Loader2, AlertTriangle } from "lucide-react";
 import { openVoiceCompanion, type VoiceMessage } from "@/lib/api";
+import { isVoiceEnabled, setVoiceEnabled, speak, stopSpeaking } from "@/lib/voice";
+import { Volume2, VolumeX } from "lucide-react";
 
 export const Route = createFileRoute("/voice")({
   head: () => ({ meta: [{ title: "Voice AI Companion — LifeOS" }] }),
@@ -18,6 +20,9 @@ function Voice() {
   const [connected, setConnected] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [voiceOn, setVoiceOn] = useState<boolean>(() => (typeof window !== "undefined" ? isVoiceEnabled() : true));
+  const voiceOnRef = useRef(voiceOn);
+  useEffect(() => { voiceOnRef.current = voiceOn; }, [voiceOn]);
   const clientRef = useRef<ReturnType<typeof openVoiceCompanion> | null>(null);
   const streamBufferRef = useRef("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -40,11 +45,13 @@ function Voice() {
           });
         } else if (msg.type === "stream-end") {
           setStreaming(false);
+          const final = msg.text || streamBufferRef.current;
           setMessages((m) => {
             const copy = [...m];
-            copy[copy.length - 1] = { role: "assistant", content: msg.text || streamBufferRef.current };
+            copy[copy.length - 1] = { role: "assistant", content: final };
             return copy;
           });
+          if (voiceOnRef.current && final) speak(final);
         } else if (msg.type === "error") {
           setError(msg.message);
           setStreaming(false);
@@ -60,10 +67,18 @@ function Voice() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  function toggleVoice() {
+    const next = !voiceOn;
+    setVoiceOn(next);
+    setVoiceEnabled(next);
+    if (!next) stopSpeaking();
+  }
+
   function send() {
     const text = input.trim();
     if (!text || streaming || !clientRef.current) return;
     setError(null);
+    stopSpeaking();
     const newMsgs = [...messages, { role: "user" as const, content: text }];
     setMessages(newMsgs);
     setInput("");
@@ -87,13 +102,23 @@ function Voice() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-sm">
               <span className={`h-2 w-2 rounded-full ${connected ? "bg-primary animate-pulse" : "bg-muted"}`} />
-              <span>{connected ? "Connected · Aurora is listening" : "Connecting…"}</span>
+              <span>{connected ? "Connected · LifeOS is listening" : "Connecting…"}</span>
             </div>
-            {streaming && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" /> thinking
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              {streaming && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" /> thinking
+                </div>
+              )}
+              <button
+                onClick={toggleVoice}
+                className="h-9 w-9 rounded-full glass flex items-center justify-center hover:bg-white/10 transition"
+                aria-label={voiceOn ? "Mute voice replies" : "Unmute voice replies"}
+                title={voiceOn ? "Voice replies on" : "Voice replies off"}
+              >
+                {voiceOn ? <Volume2 className="h-4 w-4 text-primary" /> : <VolumeX className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
           <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 pr-1 max-h-[440px]">

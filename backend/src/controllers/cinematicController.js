@@ -6,33 +6,54 @@ import { tryAI } from "../utils/ai.js";
 
 const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
 const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
+const IMAGE_FALLBACK_MODEL = process.env.OPENAI_IMAGE_FALLBACK_MODEL || "dall-e-3";
 
 /**
  * Generate a single image for a scene's visual prompt. Returns either
  * { url } (hosted URL) or { dataUrl } (base64 data URL) so the frontend
  * can display it directly. Returns null on failure (we don't want one
  * failed image to take down the whole cinematic).
+ *
+ * If the primary image model fails (e.g. `gpt-image-1` not enabled on
+ * the account or via the Replit AI Integration proxy), we transparently
+ * fall back to a second model so users still get visuals.
  */
+async function callImageModel(model, prompt) {
+  // gpt-image-1 returns b64_json by default; dall-e-3 supports both.
+  const params = {
+    model,
+    prompt: `Cinematic still, high detail, photoreal, dramatic lighting. ${prompt}`,
+    size: "1024x1024",
+    n: 1,
+  };
+  return openai.images.generate(params);
+}
+
 async function generateSceneImage(prompt) {
   if (!prompt || typeof prompt !== "string") return null;
-  try {
-    const result = await tryAI(() =>
-      openai.images.generate({
-        model: IMAGE_MODEL,
-        prompt: `Cinematic still, high detail, photoreal, dramatic lighting. ${prompt}`,
-        size: "1024x1024",
-        n: 1,
-      })
-    );
+  const tryModel = async (model) => {
+    const result = await tryAI(() => callImageModel(model, prompt));
     const item = result?.data?.[0];
     if (!item) return null;
     if (item.url) return { url: item.url };
     if (item.b64_json) return { dataUrl: `data:image/png;base64,${item.b64_json}` };
     return null;
+  };
+  try {
+    const primary = await tryModel(IMAGE_MODEL);
+    if (primary) return primary;
   } catch (err) {
-    console.warn("[cinematic] image gen failed:", err?.code || err?.message);
-    return null;
+    console.warn(`[cinematic] primary image model (${IMAGE_MODEL}) failed:`, err?.code || err?.message);
   }
+  if (IMAGE_FALLBACK_MODEL && IMAGE_FALLBACK_MODEL !== IMAGE_MODEL) {
+    try {
+      const fallback = await tryModel(IMAGE_FALLBACK_MODEL);
+      if (fallback) return fallback;
+    } catch (err) {
+      console.warn(`[cinematic] fallback image model (${IMAGE_FALLBACK_MODEL}) failed:`, err?.code || err?.message);
+    }
+  }
+  return null;
 }
 
 export async function generateCinematic(req, res, next) {

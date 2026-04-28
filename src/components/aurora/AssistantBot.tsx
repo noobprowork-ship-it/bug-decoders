@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, Mic, Send, X, Square, Loader2, AlertTriangle, Bot } from "lucide-react";
+import { Sparkles, Mic, Send, X, Square, Loader2, AlertTriangle, Bot, Volume2, VolumeX } from "lucide-react";
 import { useRouterState } from "@tanstack/react-router";
 import { openVoiceCompanion, transcribeAudio, type VoiceMessage } from "@/lib/api";
+import { isVoiceEnabled, setVoiceEnabled, speak, stopSpeaking } from "@/lib/voice";
+import { trackAction } from "@/lib/activityTracker";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -25,10 +27,13 @@ export function AssistantBot() {
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [voiceOn, setVoiceOn] = useState<boolean>(() => (typeof window !== "undefined" ? isVoiceEnabled() : true));
   const path = useRouterState({ select: (s) => s.location.pathname });
 
   const clientRef = useRef<ReturnType<typeof openVoiceCompanion> | null>(null);
   const streamBufRef = useRef("");
+  const voiceOnRef = useRef(voiceOn);
+  useEffect(() => { voiceOnRef.current = voiceOn; }, [voiceOn]);
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -61,6 +66,7 @@ export function AssistantBot() {
           });
         } else if (msg.type === "stream-end") {
           setStreaming(false);
+          if (voiceOnRef.current && streamBufRef.current) speak(streamBufRef.current);
         } else if (msg.type === "error") {
           setStreaming(false);
           setErr(msg.message || "Something went wrong");
@@ -95,11 +101,20 @@ export function AssistantBot() {
     const t = text.trim();
     if (!t || streaming) return;
     setErr(null);
+    stopSpeaking();
+    trackAction("assistant.send");
     const next: Msg[] = [...messages, { role: "user", content: t }];
     setMessages(next);
     setInput("");
     const history = next.slice(-10).map((m) => ({ role: m.role, content: m.content }));
     clientRef.current?.sendChat(t, history.slice(0, -1));
+  }
+
+  function toggleVoice() {
+    const next = !voiceOn;
+    setVoiceOn(next);
+    setVoiceEnabled(next);
+    if (!next) stopSpeaking();
   }
 
   async function startRecord() {
@@ -170,13 +185,23 @@ export function AssistantBot() {
                 </div>
               </div>
             </div>
-            <button
-              onClick={() => setOpen(false)}
-              className="h-8 w-8 rounded-full glass flex items-center justify-center hover:bg-white/10"
-              aria-label="Close assistant"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={toggleVoice}
+                className="h-8 w-8 rounded-full glass flex items-center justify-center hover:bg-white/10"
+                aria-label={voiceOn ? "Mute voice replies" : "Unmute voice replies"}
+                title={voiceOn ? "Voice replies on" : "Voice replies off"}
+              >
+                {voiceOn ? <Volume2 className="h-4 w-4 text-primary" /> : <VolumeX className="h-4 w-4" />}
+              </button>
+              <button
+                onClick={() => { stopSpeaking(); setOpen(false); }}
+                className="h-8 w-8 rounded-full glass flex items-center justify-center hover:bg-white/10"
+                aria-label="Close assistant"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
