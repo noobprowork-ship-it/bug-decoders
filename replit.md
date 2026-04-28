@@ -26,6 +26,19 @@ A TanStack Start (React 19 + Vite 7) single-page/SSR application themed as "Auro
 - **Host config:** Vite is configured with `host: "0.0.0.0"`, `port: 5000`, `allowedHosts: true` so the Replit iframe proxy can reach the dev server.
 - **Deployment:** Configured as autoscale; build = `npm run build`, run = `npm run dev`.
 
+## Backend (`/backend`)
+A separate Node + Express + MongoDB API lives in `backend/` so it doesn't collide with the frontend's `/src`.
+
+- **Entry:** `backend/server.js` (Express + WebSocket on the same HTTP server)
+- **Port:** `3001` (configurable via `PORT`); host `localhost`
+- **Auth:** JWT via `Authorization: Bearer <token>` (`backend/src/utils/verifyToken.js`)
+- **Voice login:** Whisper API transcription via `backend/src/utils/voiceLogin.js` (multer in-memory upload)
+- **AI:** OpenAI client in `backend/src/config/openai.js` (chat for AI features, voice companion over WebSocket at `/ws/voice`)
+- **Models:** `User`, `Session`, `Opportunity` (Mongoose)
+- **Routes mounted under `/api/*`:** `auth`, `ai`, `goie`, `multiverse`, `identity`, `mind`, `cinematic`, `decision`
+- **Run:** `cd backend && npm install && npm run dev`
+- **Env:** see `backend/.env.example` (`MONGODB_URI`, `JWT_SECRET`, `OPENAI_API_KEY`, …). The server boots even when env vars are missing — it logs warnings and AI/DB calls fail with clear errors.
+
 ## Notes
 - The Lovable Vite wrapper auto-includes tanstackStart, viteReact, tailwindcss, tsConfigPaths, cloudflare (build only), componentTagger (dev only), the `@` path alias, React/TanStack dedupe, and error logger plugins. Do not add these manually.
 - Two Node engine warnings appear during install (some `@tanstack/start-*` sub-packages prefer Node ≥22), but the app runs fine on Node 20.
