@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as MultiverseRouteImport } from './routes/multiverse'
 import { Route as GoieRouteImport } from './routes/goie'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 
+const MultiverseRoute = MultiverseRouteImport.update({
+  id: '/multiverse',
+  path: '/multiverse',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GoieRoute = GoieRouteImport.update({
   id: '/goie',
   path: '/goie',
@@ -33,34 +39,45 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/goie': typeof GoieRoute
+  '/multiverse': typeof MultiverseRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/goie': typeof GoieRoute
+  '/multiverse': typeof MultiverseRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/goie': typeof GoieRoute
+  '/multiverse': typeof MultiverseRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/goie'
+  fullPaths: '/' | '/dashboard' | '/goie' | '/multiverse'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/goie'
-  id: '__root__' | '/' | '/dashboard' | '/goie'
+  to: '/' | '/dashboard' | '/goie' | '/multiverse'
+  id: '__root__' | '/' | '/dashboard' | '/goie' | '/multiverse'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   GoieRoute: typeof GoieRoute
+  MultiverseRoute: typeof MultiverseRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/multiverse': {
+      id: '/multiverse'
+      path: '/multiverse'
+      fullPath: '/multiverse'
+      preLoaderRoute: typeof MultiverseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/goie': {
       id: '/goie'
       path: '/goie'
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   GoieRoute: GoieRoute,
+  MultiverseRoute: MultiverseRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
