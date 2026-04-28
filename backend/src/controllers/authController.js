@@ -54,6 +54,24 @@ export async function login(req, res) {
   }
 }
 
+/**
+ * POST /api/auth/voice-login
+ *
+ * Secure Voice Login — accepts a multipart audio upload (field: `audio`),
+ * transcribes it via Whisper, derives a stable voice-print id, and either
+ * creates the account on first use or verifies the print on subsequent logins.
+ *
+ * Body (multipart/form-data):
+ *   email: string
+ *   audio: File (webm/wav/mp3, <= 25MB)
+ *
+ * Example response:
+ *   {
+ *     "token": "eyJhbGciOi...",
+ *     "transcript": "Aurora, this is Amit. Open my dashboard.",
+ *     "user": { "id": "...", "email": "amit@example.com", "tier": "pro" }
+ *   }
+ */
 export async function voiceLogin(req, res) {
   try {
     const file = req.file;
