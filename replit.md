@@ -24,7 +24,9 @@ A TanStack Start (React 19 + Vite 7) single-page/SSR application themed as "Auro
 ## Replit Setup
 - **Workflow:** `Start application` runs `npm run dev` and serves on port `5000` (webview).
 - **Host config:** Vite is configured with `host: "0.0.0.0"`, `port: 5000`, `allowedHosts: true` so the Replit iframe proxy can reach the dev server.
-- **Deployment:** Configured as autoscale; build = `npm run build`, run = `npm run dev`.
+- **Deployment (production):** Configured as autoscale.
+  - `build = npm run build:all` — installs root + backend deps then runs `vite build` (outputs `dist/client/` static assets and `dist/server/index.js` SSR worker).
+  - `run = npm run start` — boots the Express backend (`backend/server.js`) on `PORT` (5000 in production) with `NODE_ENV=production`. The backend serves all `/api/*` routes and `/ws/voice`, plus serves the built frontend: static assets from `dist/client/` and SSR-rendered HTML by adapting the TanStack Start worker (`dist/server/index.js`) to Node's HTTP layer using Web `Request`/`Response`. This keeps a single port for Replit autoscale and avoids any dev server in production.
 
 ## Backend (`/backend`)
 A separate Node + Express + MongoDB API lives in `backend/` so it doesn't collide with the frontend's `/src`.

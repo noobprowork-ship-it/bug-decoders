@@ -7,7 +7,9 @@
     "dev": "vite dev",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "build:all": "npm install --no-audit --no-fund && cd backend && npm install --no-audit --no-fund && cd .. && npm run build",
     "preview": "vite preview",
+    "start": "cd backend && PORT=${PORT:-5000} HOST=0.0.0.0 NODE_ENV=production node server.js",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

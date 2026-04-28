@@ -1,9 +1,15 @@
 import "dotenv/config";
 import http from "http";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import { WebSocketServer } from "ws";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 import { connectDB } from "./src/config/db.js";
 import { openai } from "./src/config/openai.js";
@@ -62,6 +68,80 @@ app.use("/api/reality", realityRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+
+const CLIENT_DIST = path.resolve(__dirname, "..", "dist", "client");
+const SERVER_DIST = path.resolve(__dirname, "..", "dist", "server");
+const SERVER_ENTRY = path.join(SERVER_DIST, "index.js");
+const SERVE_FRONTEND = process.env.SERVE_FRONTEND !== "false" && fs.existsSync(SERVER_ENTRY);
+
+if (SERVE_FRONTEND) {
+  console.log(`[server] serving built frontend (SSR) from ${SERVER_DIST}`);
+  app.use(
+    "/assets",
+    express.static(path.join(CLIENT_DIST, "assets"), {
+      immutable: true,
+      maxAge: "1y",
+    })
+  );
+  app.use(express.static(CLIENT_DIST, { index: false, maxAge: "1h" }));
+
+  const ssrModulePromise = import(`file://${SERVER_ENTRY}`).then((m) => m.default || m);
+
+  app.use(async (req, res, next) => {
+    if (req.path.startsWith("/api/") || req.path.startsWith("/ws/")) return next();
+    try {
+      const worker = await ssrModulePromise;
+      const protocol =
+        req.headers["x-forwarded-proto"] || (req.socket && req.socket.encrypted ? "https" : "http");
+      const host = req.headers["x-forwarded-host"] || req.headers.host || "localhost";
+      const url = `${protocol}://${host}${req.originalUrl || req.url}`;
+
+      const headers = new Headers();
+      for (const [k, v] of Object.entries(req.headers)) {
+        if (v === undefined) continue;
+        if (Array.isArray(v)) v.forEach((vv) => headers.append(k, vv));
+        else headers.set(k, String(v));
+      }
+
+      const init = { method: req.method, headers };
+      if (!["GET", "HEAD"].includes(req.method)) {
+        init.body = req;
+        init.duplex = "half";
+      }
+
+      const request = new Request(url, init);
+      const response = await worker.fetch(request, process.env, {
+        waitUntil() {},
+        passThroughOnException() {},
+      });
+
+      res.status(response.status);
+      response.headers.forEach((value, key) => {
+        if (key.toLowerCase() === "content-encoding") return;
+        res.setHeader(key, value);
+      });
+
+      if (!response.body) return res.end();
+      const reader = response.body.getReader();
+      const pump = async () => {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(Buffer.from(value));
+        }
+        res.end();
+      };
+      await pump();
+    } catch (err) {
+      console.error("[ssr] error rendering", req.originalUrl, err);
+      next(err);
+    }
+  });
+}
+
+app.use("/api/*", (_req, res) => {
+  res.status(404).json({ error: "Not Found" });
+});
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Not Found" });
