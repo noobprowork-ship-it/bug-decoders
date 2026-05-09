@@ -35,6 +35,8 @@ import dashboardRoutes from "./src/routes/dashboard.js";
 import exploreRoutes from "./src/routes/explore.js";
 import newsRoutes from "./src/routes/news.js";
 import sessionsRoutes from "./src/routes/sessions.js";
+import pushRoutes from "./src/routes/push.js";
+import { sendWeeklyInsights, shouldSendWeekly } from "./src/controllers/pushController.js";
 
 const app = express();
 
@@ -79,6 +81,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/explore", exploreRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api/sessions", sessionsRoutes);
+app.use("/api/notifications", pushRoutes);
 
 const CLIENT_DIST = path.resolve(__dirname, "..", "dist", "client");
 const SERVER_DIST = path.resolve(__dirname, "..", "dist", "server");
@@ -295,6 +298,26 @@ wss.on("connection", (ws) => {
       connectDB().catch((e) => console.warn("[server] mongo init warn:", e.message)),
       initPostgres().catch((e) => console.warn("[server] postgres init warn:", e.message)),
     ]);
+
+    // ── Weekly push notification scheduler ──────────────────────────────
+    // Checks every hour whether 7+ days have elapsed since the last weekly
+    // insight broadcast, then sends if due. Persists last-sent in Postgres
+    // so the check survives server restarts.
+    const HOUR = 60 * 60 * 1000;
+    async function runWeeklyCheck() {
+      try {
+        if (await shouldSendWeekly()) {
+          console.log("[push] weekly insights due — sending…");
+          await sendWeeklyInsights();
+        }
+      } catch (e) {
+        console.warn("[push] weekly check error:", e.message);
+      }
+    }
+    // Run once shortly after boot, then every hour
+    setTimeout(runWeeklyCheck, 15_000);
+    setInterval(runWeeklyCheck, HOUR);
+
     server.listen(PORT, HOST, () => {
       console.log(`[server] Aurora backend listening on http://${HOST}:${PORT}`);
       console.log(`[server] WebSocket voice channel at ws://${HOST}:${PORT}/ws/voice`);

@@ -67,3 +67,10 @@ build = ["npm", "run", "build:all"]
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 180000
+
+[userenv]
+
+[userenv.shared]
+VAPID_PUBLIC_KEY = "BCA3I_k2CCVAlqJFWQJC_CwvdVXCJ8VKOiVzxWzwhZzPudjYMeth7ljidol8oFq3JwUMJoBmXAC0Pu7NBY96Ol4"
+VAPID_PRIVATE_KEY = "eMbLKcvW6mXSlu6meuMyAFiCIPO-BgfLK60Rg-S6-pI"
+VAPID_SUBJECT = "mailto:lifeos@replit.app"

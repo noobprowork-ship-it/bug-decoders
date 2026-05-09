@@ -95,6 +95,23 @@ export async function initPostgres() {
         report     JSONB NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      CREATE TABLE IF NOT EXISTS lifeos_push_subscriptions (
+        id                BIGSERIAL PRIMARY KEY,
+        user_id           TEXT,
+        endpoint          TEXT UNIQUE NOT NULL,
+        subscription_json JSONB NOT NULL,
+        created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS lifeos_push_user_idx
+        ON lifeos_push_subscriptions (user_id);
+
+      CREATE TABLE IF NOT EXISTS lifeos_push_meta (
+        key        TEXT PRIMARY KEY,
+        value      TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
     `);
 
     pgReady = true;

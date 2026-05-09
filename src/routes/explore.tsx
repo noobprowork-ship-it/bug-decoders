@@ -5,10 +5,18 @@ import { GlowCard, PageHeader, NeonButton, StatChip } from "@/components/aurora/
 import {
   Compass, Loader2, Sparkles, Brain, Briefcase, Activity, Trash2,
   RefreshCcw, AlertTriangle, Clock, Flame, Monitor, Bell, BellOff,
-  BarChart3, TrendingUp,
+  BarChart3, TrendingUp, Send, CheckCircle2,
 } from "lucide-react";
 import { summarize, clearEvents, getLiveFocusMinutes } from "@/lib/activityTracker";
 import { ApiError, getToken } from "@/lib/api";
+import {
+  isPushSupported,
+  getPushStatus,
+  subscribeToPush,
+  unsubscribeFromPush,
+  sendTestPush,
+  type PushStatus,
+} from "@/lib/pushNotifications";
 
 export const Route = createFileRoute("/explore")({
   head: () => ({ meta: [{ title: "Explore — LifeOS" }] }),
@@ -39,8 +47,13 @@ function Explore() {
   const [focusMin, setFocusMin]   = useState(() => getLiveFocusMinutes());
 
   // Permission states
-  const [notifPerm, setNotifPerm]   = useState<PermState>("unknown");
-  const [micPerm, setMicPerm]       = useState<PermState>("unknown");
+  const [micPerm, setMicPerm]   = useState<PermState>("unknown");
+
+  // Push notification state
+  const [pushStatus, setPushStatus]       = useState<PushStatus>("unsupported");
+  const [pushLoading, setPushLoading]     = useState(false);
+  const [pushError, setPushError]         = useState<string | null>(null);
+  const [testSent, setTestSent]           = useState(false);
 
   // Refresh live focus counter every 30s
   useEffect(() => {
@@ -54,11 +67,13 @@ function Explore() {
   useEffect(() => {
     setStats(summarize());
 
-    // Check existing permissions without prompting
+    // Initialise push status (reads localStorage — no prompt)
+    if (typeof window !== "undefined") {
+      setPushStatus(getPushStatus());
+    }
+
+    // Check mic permission without prompting
     if (typeof window !== "undefined" && "permissions" in navigator) {
-      navigator.permissions.query({ name: "notifications" as PermissionName })
-        .then((p) => setNotifPerm(p.state === "granted" ? "granted" : p.state === "denied" ? "denied" : "unknown"))
-        .catch(() => setNotifPerm("unsupported"));
       navigator.permissions.query({ name: "microphone" as PermissionName })
         .then((p) => setMicPerm(p.state === "granted" ? "granted" : p.state === "denied" ? "denied" : "unknown"))
         .catch(() => setMicPerm("unsupported"));
@@ -98,10 +113,48 @@ function Explore() {
     setReport(null);
   }
 
-  async function requestNotifPerm() {
-    if (!("Notification" in window)) { setNotifPerm("unsupported"); return; }
-    const result = await Notification.requestPermission();
-    setNotifPerm(result === "granted" ? "granted" : "denied");
+  // ── Push subscribe / unsubscribe / test ──────────────────────────────
+  async function handleSubscribe() {
+    setPushLoading(true);
+    setPushError(null);
+    setTestSent(false);
+    try {
+      await subscribeToPush(getToken());
+      setPushStatus(getPushStatus());
+    } catch (e) {
+      setPushError(e instanceof Error ? e.message : "Failed to enable push notifications.");
+    } finally {
+      setPushLoading(false);
+    }
+  }
+
+  async function handleUnsubscribe() {
+    setPushLoading(true);
+    setPushError(null);
+    setTestSent(false);
+    try {
+      await unsubscribeFromPush(getToken());
+      setPushStatus(getPushStatus());
+    } catch (e) {
+      setPushError(e instanceof Error ? e.message : "Failed to unsubscribe.");
+    } finally {
+      setPushLoading(false);
+    }
+  }
+
+  async function handleTestPush() {
+    setPushLoading(true);
+    setPushError(null);
+    setTestSent(false);
+    try {
+      await sendTestPush(getToken());
+      setTestSent(true);
+      setTimeout(() => setTestSent(false), 4000);
+    } catch (e) {
+      setPushError(e instanceof Error ? e.message : "Test notification failed.");
+    } finally {
+      setPushLoading(false);
+    }
   }
 
   async function requestMicPerm() {
@@ -120,6 +173,8 @@ function Explore() {
       : state === "denied"
       ? "glass text-muted-foreground opacity-60 cursor-not-allowed"
       : "glass hover:bg-white/10 text-foreground";
+
+  void permBtnClass; // kept for mic card below
 
   return (
     <Shell>
@@ -179,35 +234,67 @@ function Explore() {
             </div>
           </div>
 
-          {/* Notification permission */}
+          {/* Push notifications */}
           <div className="glass rounded-2xl p-4 flex items-start gap-3">
-            {notifPerm === "granted" ? (
+            {pushStatus === "subscribed" ? (
               <Bell className="h-5 w-5 text-[oklch(0.65_0.18_150)] mt-0.5 flex-shrink-0" />
             ) : (
               <BellOff className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
             )}
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium">Notifications</div>
+              <div className="text-sm font-medium">Weekly push insights</div>
               <div className="text-xs text-muted-foreground mt-0.5">
-                {notifPerm === "granted"
-                  ? "Enabled — LifeOS can send you nudges."
-                  : notifPerm === "denied"
-                  ? "Blocked in browser settings."
-                  : notifPerm === "unsupported"
-                  ? "Not supported in this browser."
-                  : "Allows weekly insight reminders."}
+                {pushStatus === "subscribed"
+                  ? "Active — you'll receive your weekly behavior report each Sunday."
+                  : pushStatus === "denied"
+                  ? "Blocked in browser settings — allow notifications to re-enable."
+                  : pushStatus === "unsupported"
+                  ? "Push notifications are not supported in this browser."
+                  : "Get a weekly AI-generated insight report delivered via browser push."}
               </div>
-              {notifPerm !== "granted" && notifPerm !== "unsupported" && notifPerm !== "denied" && (
-                <button
-                  onClick={requestNotifPerm}
-                  className={`mt-2 text-xs px-3 py-1.5 rounded-xl transition ${permBtnClass(notifPerm)}`}
-                >
-                  Enable notifications
-                </button>
+
+              {pushError && (
+                <div className="mt-2 text-[11px] text-[oklch(0.7_0.22_320)] flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3 flex-shrink-0" /> {pushError}
+                </div>
               )}
-              {notifPerm === "granted" && (
-                <span className="mt-2 inline-block text-xs text-[oklch(0.65_0.18_150)]">✓ Active</span>
+
+              {testSent && (
+                <div className="mt-2 text-[11px] text-[oklch(0.65_0.18_150)] flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3 flex-shrink-0" /> Test notification sent — check your browser.
+                </div>
               )}
+
+              <div className="mt-2 flex flex-wrap gap-2">
+                {pushStatus === "subscribed" ? (
+                  <>
+                    <button
+                      onClick={handleTestPush}
+                      disabled={pushLoading}
+                      className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-xl glass hover:bg-white/10 transition disabled:opacity-50"
+                    >
+                      {pushLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                      Send test
+                    </button>
+                    <button
+                      onClick={handleUnsubscribe}
+                      disabled={pushLoading}
+                      className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-xl glass hover:bg-white/10 text-muted-foreground transition disabled:opacity-50"
+                    >
+                      Unsubscribe
+                    </button>
+                  </>
+                ) : pushStatus !== "unsupported" && pushStatus !== "denied" ? (
+                  <button
+                    onClick={handleSubscribe}
+                    disabled={pushLoading}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl glass hover:bg-white/10 transition disabled:opacity-50"
+                  >
+                    {pushLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />}
+                    Enable weekly push
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
 
