@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Mail, Mic, ChromeIcon, Loader2, AlertTriangle, Square, Sparkles } from "lucide-react";
+import {
+  X, Mail, Mic, ChromeIcon, Loader2, AlertTriangle,
+  Square, Sparkles, Linkedin, Github, Link2,
+} from "lucide-react";
 import { auth, setToken } from "@/lib/api";
 import { setStoredUser } from "@/lib/user";
 
@@ -20,52 +23,130 @@ export function LoginModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md glass-strong rounded-3xl p-7 shadow-soft"
+        className="relative w-full max-w-md glass-strong rounded-3xl shadow-soft overflow-y-auto max-h-[90dvh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 h-8 w-8 rounded-full glass flex items-center justify-center hover:bg-white/10"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <div className="p-7">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 h-8 w-8 rounded-full glass flex items-center justify-center hover:bg-white/10"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
 
-        {mode === "email" && <EmailPanel onSuccess={onSuccess} />}
-        {mode === "voice" && <VoicePanel onSuccess={onSuccess} />}
-        {mode === "google" && <GooglePanel onSuccess={onSuccess} />}
+          {mode === "email"  && <EmailPanel  onSuccess={onSuccess} />}
+          {mode === "voice"  && <VoicePanel  onSuccess={onSuccess} />}
+          {mode === "google" && <GooglePanel onSuccess={onSuccess} />}
+        </div>
       </div>
     </div>
   );
 }
 
-/* ---------- Email login / signup ---------- */
+/* ── helpers ──────────────────────────────────────────────────────────────── */
+
+function Field({
+  type = "text", placeholder, value, onChange, autoComplete, icon: Icon, rows,
+}: {
+  type?: string; placeholder: string; value: string;
+  onChange: (v: string) => void; autoComplete?: string;
+  icon?: React.ElementType; rows?: number;
+}) {
+  const cls =
+    "w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary";
+  const inner = (
+    <>
+      {Icon && (
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+      )}
+      {rows ? (
+        <textarea
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={rows}
+          className={`${cls} resize-none ${Icon ? "pl-9" : ""}`}
+        />
+      ) : (
+        <input
+          type={type}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete={autoComplete}
+          className={`${cls} ${Icon ? "pl-9" : ""}`}
+        />
+      )}
+    </>
+  );
+  return <div className="relative">{inner}</div>;
+}
+
+function ErrMsg({ text }: { text: string }) {
+  return (
+    <div className="flex items-start gap-2 text-xs text-[oklch(0.7_0.22_320)]">
+      <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+      <span>{text}</span>
+    </div>
+  );
+}
+
+function SubmitBtn({ loading, children }: { loading: boolean; children: React.ReactNode }) {
+  return (
+    <button
+      type="submit"
+      disabled={loading}
+      className="w-full bg-aurora text-primary-foreground rounded-2xl py-3.5 shadow-neon hover:scale-[1.01] transition font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+    >
+      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : children}
+    </button>
+  );
+}
+
+/* ── Email login / signup ────────────────────────────────────────────────── */
 function EmailPanel({ onSuccess }: { onSuccess: () => void }) {
   const [tab, setTab] = useState<"signin" | "signup">("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [linkedin, setLinkedin] = useState("");
+  const [github, setGithub] = useState("");
+  const [portfolio, setPortfolio] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
-    if (!email.trim() || !password.trim()) {
-      setErr("Email and password are required.");
-      return;
-    }
+    if (!email.trim() || !password.trim()) { setErr("Email and password are required."); return; }
     setLoading(true);
     try {
+      const profileLinks = tab === "signup"
+        ? {
+            linkedin:  linkedin.trim() || undefined,
+            github:    github.trim() || undefined,
+            portfolio: portfolio.trim() || undefined,
+          }
+        : undefined;
+
       const resp =
         tab === "signin"
           ? await auth.login({ email: email.trim(), password })
-          : await auth.register({ name: name.trim() || undefined, email: email.trim(), password });
+          : await auth.register({
+              name: name.trim() || undefined,
+              email: email.trim(),
+              password,
+              ...(profileLinks && Object.keys(profileLinks).some(Boolean) ? { bio: profileLinks } : {}),
+            });
+
       setToken(resp.token);
       setStoredUser({
-        id: (resp.user as { id?: string })?.id,
+        id:    (resp.user as { id?: string })?.id,
         email: resp.user?.email,
-        name: (resp.user as { name?: string })?.name || (tab === "signup" ? name.trim() || undefined : undefined),
+        name:  (resp.user as { name?: string })?.name || (tab === "signup" ? name.trim() || undefined : undefined),
       });
       onSuccess();
     } catch (e) {
@@ -95,7 +176,9 @@ function EmailPanel({ onSuccess }: { onSuccess: () => void }) {
             key={t}
             onClick={() => setTab(t)}
             className={`flex-1 py-2 rounded-xl text-xs font-medium transition ${
-              tab === t ? "bg-aurora text-primary-foreground shadow-neon" : "text-muted-foreground hover:text-foreground"
+              tab === t
+                ? "bg-aurora text-primary-foreground shadow-neon"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {t === "signin" ? "Sign in" : "Sign up"}
@@ -105,52 +188,54 @@ function EmailPanel({ onSuccess }: { onSuccess: () => void }) {
 
       <form onSubmit={submit} className="space-y-3">
         {tab === "signup" && (
-          <input
-            type="text"
-            placeholder="Name (optional)"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary"
-          />
+          <Field placeholder="Full name (optional)" value={name} onChange={setName} />
         )}
-        <input
-          type="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary"
-          autoComplete="email"
+        <Field
+          type="email" placeholder="you@example.com" value={email}
+          onChange={setEmail} autoComplete="email"
         />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary"
+        <Field
+          type="password" placeholder="Password" value={password}
+          onChange={setPassword}
           autoComplete={tab === "signin" ? "current-password" : "new-password"}
         />
 
-        {err && (
-          <div className="flex items-start gap-2 text-xs text-[oklch(0.7_0.22_320)]">
-            <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-            <span>{err}</span>
-          </div>
+        {tab === "signup" && (
+          <>
+            <div className="pt-1 pb-0.5">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-2">
+                Profile links (optional)
+              </div>
+              <div className="space-y-2">
+                <Field
+                  type="url" placeholder="LinkedIn URL" value={linkedin}
+                  onChange={setLinkedin} icon={Linkedin}
+                />
+                <Field
+                  type="url" placeholder="GitHub URL" value={github}
+                  onChange={setGithub} icon={Github}
+                />
+                <Field
+                  type="url" placeholder="Portfolio / website URL" value={portfolio}
+                  onChange={setPortfolio} icon={Link2}
+                />
+              </div>
+            </div>
+          </>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-aurora text-primary-foreground rounded-2xl py-3.5 shadow-neon hover:scale-[1.01] transition font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-60"
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+        {err && <ErrMsg text={err} />}
+
+        <SubmitBtn loading={loading}>
+          <Sparkles className="h-4 w-4" />
           {tab === "signin" ? "Sign in" : "Create account"}
-        </button>
+        </SubmitBtn>
       </form>
     </div>
   );
 }
 
-/* ---------- Voice login ---------- */
+/* ── Voice login ─────────────────────────────────────────────────────────── */
 function VoicePanel({ onSuccess }: { onSuccess: () => void }) {
   const [email, setEmail] = useState("");
   const [recording, setRecording] = useState(false);
@@ -159,7 +244,7 @@ function VoicePanel({ onSuccess }: { onSuccess: () => void }) {
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<string | null>(null);
-  const recRef = useRef<MediaRecorder | null>(null);
+  const recRef    = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
 
   useEffect(() => () => { if (audioUrl) URL.revokeObjectURL(audioUrl); }, [audioUrl]);
@@ -185,10 +270,8 @@ function VoicePanel({ onSuccess }: { onSuccess: () => void }) {
       setErr(e instanceof Error ? e.message : "Microphone access denied.");
     }
   }
-  function stop() {
-    recRef.current?.stop();
-    setRecording(false);
-  }
+
+  function stop() { recRef.current?.stop(); setRecording(false); }
 
   async function submit() {
     if (!email.trim()) return setErr("Email is required.");
@@ -198,9 +281,9 @@ function VoicePanel({ onSuccess }: { onSuccess: () => void }) {
       const resp = await auth.voiceLogin(email.trim(), audio);
       setToken(resp.token);
       setStoredUser({
-        id: resp.user?.id,
+        id:    resp.user?.id,
         email: resp.user?.email,
-        name: (resp.user as { name?: string })?.name,
+        name:  (resp.user as { name?: string })?.name,
       });
       setTranscript(resp.transcript || null);
       setTimeout(onSuccess, 700);
@@ -223,15 +306,11 @@ function VoicePanel({ onSuccess }: { onSuccess: () => void }) {
         </div>
       </div>
 
-      <input
-        type="email"
-        placeholder="Your email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary mb-4"
+      <Field
+        type="email" placeholder="Your email" value={email}
+        onChange={setEmail} autoComplete="email"
       />
-
-      <div className="glass rounded-2xl p-5 mb-4 flex flex-col items-center">
+      <div className="mt-4 glass rounded-2xl p-5 mb-4 flex flex-col items-center">
         {recording ? (
           <button
             onClick={stop}
@@ -255,12 +334,7 @@ function VoicePanel({ onSuccess }: { onSuccess: () => void }) {
         {audioUrl && !recording && <audio src={audioUrl} controls className="w-full mt-3" />}
       </div>
 
-      {err && (
-        <div className="flex items-start gap-2 text-xs text-[oklch(0.7_0.22_320)] mb-3">
-          <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-          <span>{err}</span>
-        </div>
-      )}
+      {err && <div className="mb-3"><ErrMsg text={err} /></div>}
       {transcript && (
         <div className="text-xs text-muted-foreground mb-3 glass rounded-xl p-3">
           Heard: <span className="text-foreground">"{transcript}"</span>
@@ -279,41 +353,50 @@ function VoicePanel({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-/* ---------- Google (real account, real bio) ---------- */
+/* ── Google / profile link ───────────────────────────────────────────────── */
 function GooglePanel({ onSuccess }: { onSuccess: () => void }) {
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
+  const [email, setEmail]       = useState("");
+  const [name, setName]         = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
-  const [bioText, setBioText] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [bioText, setBioText]   = useState("");
+  const [linkedin, setLinkedin] = useState("");
+  const [github, setGithub]     = useState("");
+  const [portfolio, setPortfolio] = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [err, setErr]           = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
-      setErr("Please enter your real Google email so we can link your data.");
+      setErr("Please enter a valid email address.");
       return;
     }
     setLoading(true);
     try {
+      const bioPayload: Record<string, string> = {};
+      if (bioText.trim())   bioPayload.about     = bioText.trim();
+      if (linkedin.trim())  bioPayload.linkedin   = linkedin.trim();
+      if (github.trim())    bioPayload.github     = github.trim();
+      if (portfolio.trim()) bioPayload.portfolio  = portfolio.trim();
+
       const resp = await auth.google({
-        email: email.trim(),
-        name: name.trim() || undefined,
+        email:    email.trim(),
+        name:     name.trim() || undefined,
         photoUrl: photoUrl.trim() || undefined,
-        bio: bioText.trim() ? { about: bioText.trim() } : undefined,
+        bio:      Object.keys(bioPayload).length ? bioPayload : undefined,
       });
       setToken(resp.token);
       setStoredUser({
-        id: resp.user?.id,
-        email: resp.user?.email,
-        name: resp.user?.name || name.trim() || undefined,
+        id:       resp.user?.id,
+        email:    resp.user?.email,
+        name:     resp.user?.name || name.trim() || undefined,
         photoUrl: resp.user?.photoUrl || photoUrl.trim() || undefined,
-        tier: resp.user?.tier,
+        tier:     resp.user?.tier,
       });
       onSuccess();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Google sign-in failed.");
+      setErr(e instanceof Error ? e.message : "Sign-in failed.");
     } finally {
       setLoading(false);
     }
@@ -337,50 +420,46 @@ function GooglePanel({ onSuccess }: { onSuccess: () => void }) {
       </div>
 
       <form onSubmit={submit} className="space-y-3">
-        <input
-          type="email"
-          required
-          autoComplete="email"
-          placeholder="you@gmail.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary"
+        <Field
+          type="email" placeholder="you@gmail.com" value={email}
+          onChange={setEmail} autoComplete="email"
         />
-        <input
-          type="text"
-          placeholder="Full name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary"
+        <Field placeholder="Full name" value={name} onChange={setName} />
+        <Field
+          type="url" placeholder="Profile photo URL (optional)"
+          value={photoUrl} onChange={setPhotoUrl}
         />
-        <input
-          type="url"
-          placeholder="Profile photo URL (optional)"
-          value={photoUrl}
-          onChange={(e) => setPhotoUrl(e.target.value)}
-          className="w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary"
-        />
-        <textarea
+        <Field
           placeholder="A short bio so Aurora gets you (optional)"
-          value={bioText}
-          onChange={(e) => setBioText(e.target.value)}
-          rows={2}
-          className="w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary resize-none"
+          value={bioText} onChange={setBioText} rows={2}
         />
-        {err && (
-          <div className="flex items-start gap-2 text-xs text-[oklch(0.7_0.22_320)]">
-            <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-            <span>{err}</span>
+
+        <div className="pt-1">
+          <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-2">
+            Profile links (optional)
           </div>
-        )}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-aurora text-primary-foreground rounded-2xl py-3.5 shadow-neon hover:scale-[1.01] transition font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-60"
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChromeIcon className="h-4 w-4" />}
+          <div className="space-y-2">
+            <Field
+              type="url" placeholder="LinkedIn URL" value={linkedin}
+              onChange={setLinkedin} icon={Linkedin}
+            />
+            <Field
+              type="url" placeholder="GitHub URL" value={github}
+              onChange={setGithub} icon={Github}
+            />
+            <Field
+              type="url" placeholder="Portfolio / website URL" value={portfolio}
+              onChange={setPortfolio} icon={Link2}
+            />
+          </div>
+        </div>
+
+        {err && <ErrMsg text={err} />}
+
+        <SubmitBtn loading={loading}>
+          <ChromeIcon className="h-4 w-4" />
           Continue with Google
-        </button>
+        </SubmitBtn>
       </form>
     </div>
   );

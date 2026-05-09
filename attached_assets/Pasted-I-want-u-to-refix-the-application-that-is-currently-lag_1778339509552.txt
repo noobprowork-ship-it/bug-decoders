@@ -1,0 +1,87 @@
+I want u to refix the  application that is currently lagging, glitching, and not working smoothly. 
+I need you to refactor, optimize, and enhance the full codebase with the following requirements:
+
+---------------------------------------------------
+1. FIX PERFORMANCE LAG & GLITCH ISSUES
+---------------------------------------------------
+- Identify all performance bottlenecks (heavy re-renders, unnecessary API calls, memory leaks, UI overloads).
+- Optimize animations, component structure, and loading flow.
+- Improve caching and state management for smooth performance.
+- Remove any code causing UI freeze or frame drops.
+
+---------------------------------------------------
+2. IMPROVE LOGIN SYSTEM (MODERN AUTH)
+---------------------------------------------------
+Rebuild the login page with these options:
+- Google Login (OAuth)
+- Email + Password Login
+- Ability to Create a New Account
+- Ability to link external profiles:
+    - LinkedIn profile link
+    - GitHub profile link
+    - Any custom URL or portfolio link
+
+The login UI should be clean, simple, and responsive.
+
+---------------------------------------------------
+3. FIX META AI SECTION
+---------------------------------------------------
+Meta AI must work properly and provide detailed responses without errors.
+- Fix API failures and response interruptions.
+- Enable fetching of TODAY’S NEWS without error.
+- Make the AI output smoother, structured, and detailed.
+- Ensure no crashes or undefined states occur.
+
+---------------------------------------------------
+4. ADD MALE VOICE TTS OPTION
+---------------------------------------------------
+Inside the Meta AI feature, add:
+- Male voice option
+- Female voice option
+
+Use a reliable TTS library (Web Speech API or Google Cloud TTS).
+
+---------------------------------------------------
+5. ENHANCE EXPLORE FEATURE (USER ANALYTICS)
+---------------------------------------------------
+In the Explore section, add a complete analytics system:
+- Analyse mobile screen time
+- Analyse apps used by the user
+- Ask for permissions to access:
+    - App usage history
+    - App search history
+    - Activity logs (allowed by device permissions)
+- Use this data to generate:
+    - Skill analysis
+    - Productivity insights
+    - Personalized suggestions
+
+Ensure permission prompts are correct for Android/iOS/web.
+
+---------------------------------------------------
+6. MAKE FULL UI 100% RESPONSIVE
+---------------------------------------------------
+Make the entire app fully adaptive to:
+- Mobile phones
+- Tablets
+- Laptops
+- Large desktop screens
+
+Use proper responsive layout, spacing, alignment, and scalable typography.
+
+---------------------------------------------------
+7. FINAL OUTPUT EXPECTED
+---------------------------------------------------
+Deliver:
+- Clean and optimized code
+- Rebuilt login page
+- Working Meta AI section with news fixed
+- Working male/female voice TTS
+- Working Explore analytics with permission system
+- Complete responsive UI
+- Zero lag or glitches
+- Production-ready build
+
+---------------------------------------------------
+END OF PROMPT
+Please implement all these changes in my project code now.

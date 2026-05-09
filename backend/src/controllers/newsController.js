@@ -1,19 +1,25 @@
 import { openai } from "../config/openai.js";
 import { tryAI } from "../utils/ai.js";
 
-const CHAT_MODEL = process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
-const SEARCH_MODEL = process.env.OPENAI_SEARCH_MODEL || "gpt-4o";
+const CHAT_MODEL   = process.env.OPENAI_CHAT_MODEL   || "gpt-4o-mini";
+const SEARCH_MODEL = process.env.OPENAI_SEARCH_MODEL || "gpt-4o-mini";
+
+const SYSTEM_PROMPT =
+  "You are LifeOS News Desk — a sharp, concise current-affairs assistant. " +
+  "Answer with the most recent verified information you have. " +
+  "Cite at least 2 sources inline as [name](url) when they are available. " +
+  "Keep answers short, factual, and voice-friendly (max 3 short paragraphs). " +
+  "If you are unsure about recent events, clearly say so.";
 
 /**
  * POST /api/news
  *
- * Aurora's "current affairs" mode. Uses the OpenAI Responses API with the
- * `web_search_preview` tool when available, so the assistant can answer
- * about up-to-the-minute news (markets, wars, space, sports). Falls back
- * to a regular chat completion with an honest disclaimer if web search is
- * not enabled on the account.
- *
  * Body: { query: string, topic?: "general"|"markets"|"sports"|"space"|"world" }
+ *
+ * Strategy:
+ *  1. Try Responses API with web_search_preview (gpt-4o family, needs Responses endpoint).
+ *  2. Fall back to plain chat completion with a live-search disclaimer.
+ *  Both paths fail fast and cleanly so the UI always gets a response.
  */
 export async function getNews(req, res, next) {
   try {
@@ -21,60 +27,68 @@ export async function getNews(req, res, next) {
     const topic = String(req.body?.topic || "general").toLowerCase();
     if (!query) return res.status(400).json({ error: "query is required" });
 
-    const system =
-      "You are Aurora's current-affairs desk. Answer with the latest verified information. " +
-      "Cite at least 2 sources inline as [name](url). Keep it short, factual, and voice-friendly. " +
-      "If you cannot verify something with a recent source, say so explicitly.";
+    const userContent = `Topic: ${topic}\n\nQuestion: ${query}`;
 
-    // Try Responses API with web_search_preview tool (works on gpt-4o family).
+    // ── Path 1: Responses API with web_search_preview ──────────────────────
     try {
       const result = await tryAI(() =>
         openai.responses.create({
           model: SEARCH_MODEL,
           tools: [{ type: "web_search_preview" }],
           input: [
-            { role: "system", content: system },
-            { role: "user", content: `Topic: ${topic}\n\nQuestion: ${query}` },
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user",   content: userContent },
           ],
         })
       );
 
+      // Normalise output across SDK versions
       const text =
-        result.output_text ||
+        result?.output_text ||
         result?.output
           ?.flatMap?.((o) => o?.content || [])
-          ?.map((c) => c?.text || "")
+          ?.filter?.((c) => c?.type === "output_text" || c?.text)
+          ?.map?.((c) => c?.text || c?.output_text || "")
           ?.join("") ||
         "";
 
-      const sources = extractSources(text);
-      return res.json({ answer: text.trim(), sources, mode: "web_search" });
+      if (text.trim()) {
+        const sources = extractSources(text);
+        return res.json({ answer: text.trim(), sources, mode: "web_search" });
+      }
+      // Empty response — fall through to chat completion
     } catch (searchErr) {
-      console.warn("[news] web_search unavailable, falling back:", searchErr?.code || searchErr?.message);
+      // Expected: web_search not enabled on this key/provider — fall through silently
+      const code = searchErr?.code || searchErr?.status || "unknown";
+      console.warn("[news] web_search_preview unavailable (%s) — falling back to chat", code);
     }
 
-    // Fallback: plain chat completion with an honest disclaimer.
+    // ── Path 2: Plain chat completion ──────────────────────────────────────
     const completion = await tryAI(() =>
       openai.chat.completions.create({
         model: CHAT_MODEL,
+        max_tokens: 512,
         messages: [
           {
             role: "system",
             content:
-              "You are Aurora's current-affairs desk. Live web search is unavailable right now, " +
-              "so answer from your training data and explicitly note that the information may be outdated. " +
-              "Be concise and voice-friendly.",
+              SYSTEM_PROMPT +
+              " Live web search is unavailable, so answer from training data and " +
+              "explicitly note if information may be outdated.",
           },
-          { role: "user", content: `Topic: ${topic}\n\nQuestion: ${query}` },
+          { role: "user", content: userContent },
         ],
       })
     );
+
     const text = completion.choices?.[0]?.message?.content?.trim() || "";
+    const sources = extractSources(text);
     return res.json({
-      answer: text,
-      sources: [],
+      answer: text || "I couldn't find information on that right now.",
+      sources,
       mode: "fallback",
-      notice: "Live web search is not enabled — answer is based on training data and may be outdated.",
+      notice:
+        "Live web search is not available — this answer is based on training data and may be outdated.",
     });
   } catch (err) {
     return next(err);
@@ -85,6 +99,8 @@ function extractSources(text) {
   const re = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g;
   const out = [];
   let m;
-  while ((m = re.exec(text)) !== null) out.push({ title: m[1], url: m[2] });
+  while ((m = re.exec(text)) !== null) {
+    out.push({ title: m[1], url: m[2] });
+  }
   return out;
 }
