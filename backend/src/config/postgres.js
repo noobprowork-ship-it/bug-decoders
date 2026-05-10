@@ -52,15 +52,25 @@ export async function initPostgres() {
 
     await p.query(`
       CREATE TABLE IF NOT EXISTS lifeos_users (
-        id           TEXT PRIMARY KEY,
-        email        TEXT UNIQUE NOT NULL,
-        name         TEXT,
-        photo_url    TEXT,
-        provider     TEXT NOT NULL DEFAULT 'google',
-        bio          JSONB DEFAULT '{}'::jsonb,
-        created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        id            TEXT PRIMARY KEY,
+        email         TEXT UNIQUE NOT NULL,
+        name          TEXT,
+        photo_url     TEXT,
+        provider      TEXT NOT NULL DEFAULT 'google',
+        password_hash TEXT,
+        bio           JSONB DEFAULT '{}'::jsonb,
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         last_login_at TIMESTAMPTZ
       );
+      -- Add password_hash if migrating an existing DB that didn't have it
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name='lifeos_users' AND column_name='password_hash'
+        ) THEN
+          ALTER TABLE lifeos_users ADD COLUMN password_hash TEXT;
+        END IF;
+      END $$;
 
       CREATE TABLE IF NOT EXISTS lifeos_chat_sessions (
         id          TEXT PRIMARY KEY,

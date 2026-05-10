@@ -13,7 +13,7 @@ import { VoiceSettings } from "./VoiceSettings";
 type Msg = { role: "user" | "assistant"; content: string };
 
 const PAGE_HINTS: Record<string, string> = {
-  "/": "Welcome to LifeOS. Pick a sign-in method, or skip to the dashboard to explore.",
+  "/": "Welcome to LifeOS. Sign in with Google or Email, or skip straight to the dashboard.",
   "/dashboard": "This is your home base. Open a module like GOIE, Multiverse, Cinematic, or Mind to start.",
   "/goie": "GOIE generates real-world opportunities with sources. Add interests/skills, then tap Generate opportunities.",
   "/multiverse": "Type a decision and I'll branch out alternate futures with milestones, risks and wins.",
@@ -21,6 +21,7 @@ const PAGE_HINTS: Record<string, string> = {
   "/mind": "Pour out your thoughts in Decode, or answer questions in Universe — I'll build a mind map.",
   "/voice": "This is the full-screen voice companion — ask me anything, I'll stream a reply.",
   "/explore": "Explore shows your behavior patterns and hidden skills. Try generating a report!",
+  "/profile": "This is your Profile. Fill in your skills, bio, and links — then hit Career AI for personalised job and career recommendations!",
 };
 
 const WELCOME =

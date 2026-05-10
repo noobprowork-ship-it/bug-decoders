@@ -114,14 +114,14 @@ const json = (body: unknown): RequestInit => ({
 
 // ---------------- Auth ----------------
 export const auth = {
-  register: (body: { name?: string; email: string; password: string }) =>
-    request<{ token: string; user: { id: string; email: string } }>(
+  register: (body: { name?: string; email: string; password: string; bio?: Record<string, unknown> }) =>
+    request<{ token: string; user: { id: string; email: string; name?: string } }>(
       "/api/auth/register",
       json(body),
       { auth: false }
     ),
   login: (body: { email: string; password: string }) =>
-    request<{ token: string; user: { id: string; email: string } }>(
+    request<{ token: string; user: { id: string; email: string; name?: string } }>(
       "/api/auth/login",
       json(body),
       { auth: false }
@@ -308,6 +308,38 @@ export const onboarding = {
 // ---------------- Dashboard Intelligence ----------------
 export const dashboard = {
   get: () => request("/api/dashboard"),
+};
+
+// ---------------- User Profile ----------------
+export type ProfilePayload = {
+  name?: string;
+  photoUrl?: string;
+  about?: string;
+  age?: number | null;
+  gender?: string;
+  personalityType?: string;
+  skills?: string[];
+  linkedin?: string;
+  github?: string;
+  portfolio?: string;
+  customLinks?: { label: string; url: string }[];
+};
+
+export const profile = {
+  get: () => request<{ profile: ProfilePayload | null; isGuest?: boolean }>("/api/profile"),
+  update: (body: ProfilePayload) =>
+    request<{ ok: boolean; profile: ProfilePayload; notice?: string }>(
+      "/api/profile",
+      { method: "PUT", body: JSON.stringify(body) }
+    ),
+  careerInsights: (profileData: ProfilePayload) =>
+    request<{
+      summary?: string;
+      jobOpportunities?: unknown[];
+      careerPaths?: unknown[];
+      learningPaths?: unknown[];
+      trendingRoles?: unknown[];
+    }>("/api/profile/career-insights", json({ profile: profileData })),
 };
 
 // ---------------- AI Voice Companion (WebSocket) ----------------

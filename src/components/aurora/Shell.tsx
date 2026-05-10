@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Home, Globe2, GitBranch, Clapperboard, Brain,
-  Mic, Sparkles, Compass, MoreHorizontal,
+  Mic, Sparkles, Compass, MoreHorizontal, User,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { AssistantBot } from "./AssistantBot";
@@ -18,6 +18,7 @@ const nav = [
   { to: "/mind",       label: "Mind",      icon: Brain },
   { to: "/explore",    label: "Explore",   icon: Compass },
   { to: "/voice",      label: "Voice AI",  icon: Mic },
+  { to: "/profile",    label: "Profile",   icon: User },
 ] as const;
 
 // First 5 always visible; remaining in "more" drawer
@@ -78,7 +79,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <ThemeToggle />
           </div>
 
-          <div className="glass rounded-2xl p-3 flex items-center gap-3 flex-shrink-0">
+          <Link to="/profile" className="glass rounded-2xl p-3 flex items-center gap-3 flex-shrink-0 hover:bg-white/5 transition">
             <div className="h-9 w-9 rounded-full bg-aurora flex items-center justify-center text-xs font-bold text-primary-foreground flex-shrink-0">
               {initial}
             </div>
@@ -86,7 +87,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <div className="text-sm font-medium truncate">{displayName}</div>
               <div className="text-[10px] text-muted-foreground">Online · LifeOS ready</div>
             </div>
-          </div>
+          </Link>
         </div>
       </aside>
 

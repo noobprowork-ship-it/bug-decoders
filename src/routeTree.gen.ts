@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VoiceRouteImport } from './routes/voice'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as MultiverseRouteImport } from './routes/multiverse'
 import { Route as MindRouteImport } from './routes/mind'
 import { Route as GoieRouteImport } from './routes/goie'
@@ -21,6 +22,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const VoiceRoute = VoiceRouteImport.update({
   id: '/voice',
   path: '/voice',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MultiverseRoute = MultiverseRouteImport.update({
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/goie': typeof GoieRoute
   '/mind': typeof MindRoute
   '/multiverse': typeof MultiverseRoute
+  '/profile': typeof ProfileRoute
   '/voice': typeof VoiceRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/goie': typeof GoieRoute
   '/mind': typeof MindRoute
   '/multiverse': typeof MultiverseRoute
+  '/profile': typeof ProfileRoute
   '/voice': typeof VoiceRoute
 }
 export interface FileRoutesById {
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/goie': typeof GoieRoute
   '/mind': typeof MindRoute
   '/multiverse': typeof MultiverseRoute
+  '/profile': typeof ProfileRoute
   '/voice': typeof VoiceRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/goie'
     | '/mind'
     | '/multiverse'
+    | '/profile'
     | '/voice'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/goie'
     | '/mind'
     | '/multiverse'
+    | '/profile'
     | '/voice'
   id:
     | '__root__'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/goie'
     | '/mind'
     | '/multiverse'
+    | '/profile'
     | '/voice'
   fileRoutesById: FileRoutesById
 }
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   GoieRoute: typeof GoieRoute
   MindRoute: typeof MindRoute
   MultiverseRoute: typeof MultiverseRoute
+  ProfileRoute: typeof ProfileRoute
   VoiceRoute: typeof VoiceRoute
 }
 
@@ -141,6 +154,13 @@ declare module '@tanstack/react-router' {
       path: '/voice'
       fullPath: '/voice'
       preLoaderRoute: typeof VoiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/multiverse': {
@@ -203,6 +223,7 @@ const rootRouteChildren: RootRouteChildren = {
   GoieRoute: GoieRoute,
   MindRoute: MindRoute,
   MultiverseRoute: MultiverseRoute,
+  ProfileRoute: ProfileRoute,
   VoiceRoute: VoiceRoute,
 }
 export const routeTree = rootRouteImport
