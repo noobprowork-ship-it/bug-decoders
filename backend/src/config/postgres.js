@@ -122,6 +122,19 @@ export async function initPostgres() {
         value      TEXT NOT NULL,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      CREATE TABLE IF NOT EXISTS lifeos_saved_jobs (
+        id           TEXT PRIMARY KEY,
+        user_id      TEXT NOT NULL,
+        job_data     JSONB NOT NULL,
+        profile_data JSONB DEFAULT '{}'::jsonb,
+        status       TEXT NOT NULL DEFAULT 'interested',
+        notes        TEXT DEFAULT '',
+        saved_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS lifeos_saved_jobs_user_idx
+        ON lifeos_saved_jobs (user_id, saved_at DESC);
     `);
 
     pgReady = true;

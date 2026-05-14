@@ -1,5 +1,6 @@
 import { openai } from "../config/openai.js";
 import { tryAI } from "../utils/ai.js";
+import { tryPg, pgQuery } from "../config/postgres.js";
 
 const CHAT_MODEL   = process.env.OPENAI_CHAT_MODEL   || "gpt-4o-mini";
 const SEARCH_MODEL = process.env.OPENAI_SEARCH_MODEL || "gpt-4o";
@@ -169,6 +170,113 @@ export async function scanJobs(req, res, next) {
       error: "RJSS could not parse a valid job list. Please try again.",
       raw:   rawText.slice(0, 300),
     });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+// ── Save / Track endpoints ────────────────────────────────────────────────────
+
+/**
+ * POST /api/rjss/save
+ * Body: { id, job, status? }
+ */
+export async function saveJob(req, res, next) {
+  try {
+    const userId = req.user?.id || req.guestId || "guest";
+    const { id, job, status = "interested" } = req.body || {};
+    if (!id || !job?.title) return res.status(400).json({ error: "id and job are required" });
+
+    await tryPg(async () => {
+      await pgQuery(
+        `INSERT INTO lifeos_saved_jobs (id, user_id, job_data, status, saved_at, updated_at)
+         VALUES ($1, $2, $3, $4, NOW(), NOW())
+         ON CONFLICT (id) DO NOTHING`,
+        [id, userId, JSON.stringify(job), status]
+      );
+    }, null);
+
+    return res.json({ ok: true });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+/**
+ * GET /api/rjss/saved
+ */
+export async function getSaved(req, res, next) {
+  try {
+    const userId = req.user?.id || req.guestId || "guest";
+
+    const rows = await tryPg(async () => {
+      const r = await pgQuery(
+        `SELECT id, job_data, status, notes, saved_at, updated_at
+         FROM lifeos_saved_jobs WHERE user_id = $1
+         ORDER BY saved_at DESC LIMIT 100`,
+        [userId]
+      );
+      return r.rows;
+    }, []);
+
+    const entries = (rows || []).map((r) => ({
+      id:        r.id,
+      job:       r.job_data,
+      status:    r.status,
+      notes:     r.notes || "",
+      savedAt:   r.saved_at,
+      updatedAt: r.updated_at,
+    }));
+
+    return res.json({ entries });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+/**
+ * PUT /api/rjss/saved/:id
+ * Body: { status?, notes? }
+ */
+export async function updateJobStatus(req, res, next) {
+  try {
+    const { id }                   = req.params;
+    const { status, notes }        = req.body || {};
+    const userId = req.user?.id || req.guestId || "guest";
+
+    await tryPg(async () => {
+      await pgQuery(
+        `UPDATE lifeos_saved_jobs
+         SET status = COALESCE($1, status),
+             notes  = COALESCE($2, notes),
+             updated_at = NOW()
+         WHERE id = $3 AND user_id = $4`,
+        [status || null, notes ?? null, id, userId]
+      );
+    }, null);
+
+    return res.json({ ok: true });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+/**
+ * DELETE /api/rjss/saved/:id
+ */
+export async function removeJob(req, res, next) {
+  try {
+    const { id }   = req.params;
+    const userId   = req.user?.id || req.guestId || "guest";
+
+    await tryPg(async () => {
+      await pgQuery(
+        `DELETE FROM lifeos_saved_jobs WHERE id = $1 AND user_id = $2`,
+        [id, userId]
+      );
+    }, null);
+
+    return res.json({ ok: true });
   } catch (err) {
     return next(err);
   }

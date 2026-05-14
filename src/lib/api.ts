@@ -430,6 +430,22 @@ export const rjss = {
       method: "POST",
       body: JSON.stringify(profile),
     }),
+  save: (payload: { id: string; job: RjssJob; status?: string }) =>
+    request<{ ok: boolean }>("/api/rjss/save", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  getSaved: () =>
+    request<{ entries: Array<{ id: string; job: RjssJob; status: string; notes: string; savedAt: string; updatedAt: string }> }>(
+      "/api/rjss/saved"
+    ),
+  updateStatus: (id: string, status: string, notes?: string) =>
+    request<{ ok: boolean }>(`/api/rjss/saved/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ status, notes }),
+    }),
+  remove: (id: string) =>
+    request<{ ok: boolean }>(`/api/rjss/saved/${id}`, { method: "DELETE" }),
 };
 
 export default {

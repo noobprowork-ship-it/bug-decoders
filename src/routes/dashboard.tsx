@@ -2,9 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Shell } from "@/components/aurora/Shell";
 import { GlowCard, PageHeader, StatChip, NeonButton } from "@/components/aurora/ui";
-import { Sparkles, ArrowUpRight, Globe2, GitBranch, Brain, Clapperboard, Compass, Loader2 } from "lucide-react";
+import { Sparkles, ArrowUpRight, Globe2, GitBranch, Brain, Clapperboard, Compass, Loader2, ScanSearch, BookmarkCheck } from "lucide-react";
 import { dashboard } from "@/lib/api";
 import { getStoredUser } from "@/lib/user";
+import { type SavedJobEntry, type JobStatus, STATUS_META } from "./rjss";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — LifeOS" }] }),
@@ -130,11 +131,12 @@ function Dashboard() {
           </div>
         </GlowCard>
 
-        <ModuleTile to="/goie" title="GOIE" desc="Global opportunities" icon={Globe2} glow="blue" />
-        <ModuleTile to="/multiverse" title="Multiverse" desc="Simulate parallel paths" icon={GitBranch} glow="purple" />
-        <ModuleTile to="/cinematic" title="Cinematic" desc="Your future, as a film" icon={Clapperboard} glow="pink" />
-        <ModuleTile to="/mind" title="Mind Universe" desc="Map your inner cosmos" icon={Brain} glow="purple" />
-        <ModuleTile to="/explore" title="Explore" desc="Decode your behavior" icon={Compass} glow="blue" />
+        <ModuleTile to="/goie"       title="GOIE"         desc="Global opportunities"    icon={Globe2}      glow="blue" />
+        <ModuleTile to="/multiverse" title="Multiverse"   desc="Simulate parallel paths" icon={GitBranch}   glow="purple" />
+        <ModuleTile to="/cinematic"  title="Cinematic"    desc="Your future, as a film"  icon={Clapperboard} glow="pink" />
+        <ModuleTile to="/mind"       title="Mind Universe" desc="Map your inner cosmos"  icon={Brain}       glow="purple" />
+        <ModuleTile to="/explore"    title="Explore"      desc="Decode your behavior"    icon={Compass}     glow="blue" />
+        <JobTrackerWidget />
       </div>
 
       {(data?.recentActivity?.length || data?.topOpportunities?.length) ? (
@@ -183,6 +185,74 @@ function ModuleTile({ to, title, desc, icon: Icon, glow }: any) {
         </div>
         <h3 className="font-display text-lg font-semibold">{title}</h3>
         <p className="text-sm text-muted-foreground">{desc}</p>
+      </GlowCard>
+    </Link>
+  );
+}
+
+function JobTrackerWidget() {
+  const [saved, setSaved] = useState<SavedJobEntry[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem("lifeos.rjss.saved") : null;
+      if (raw) setSaved(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, []);
+
+  const total    = saved.length;
+  const applied  = saved.filter((e) => e.status === "applied").length;
+  const interview = saved.filter((e) => e.status === "interview").length;
+  const offers   = saved.filter((e) => e.status === "offer").length;
+  const recent   = saved.slice(0, 3);
+
+  return (
+    <Link to="/rjss" className="group">
+      <GlowCard glow="blue" className="h-full hover:scale-[1.02] transition-transform">
+        <div className="flex items-start justify-between mb-4">
+          <div className="h-11 w-11 rounded-2xl bg-aurora/20 border border-primary/30 flex items-center justify-center">
+            <ScanSearch className="h-5 w-5 text-primary" />
+          </div>
+          <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
+        </div>
+        <h3 className="font-display text-lg font-semibold">Jobs</h3>
+        <p className="text-sm text-muted-foreground mb-3">Scan & track opportunities</p>
+
+        {total === 0 ? (
+          <p className="text-xs text-muted-foreground">No saved jobs yet. Run a scan to find opportunities.</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-1.5 mb-3">
+              {[
+                { label: "Applied",   val: applied,   color: "text-violet-400" },
+                { label: "Interview", val: interview, color: "text-amber-400" },
+                { label: "Offers",    val: offers,    color: "text-emerald-400" },
+              ].map((s) => (
+                <div key={s.label} className="glass rounded-xl p-2 text-center">
+                  <div className={`text-lg font-bold font-display ${s.color}`}>{s.val}</div>
+                  <div className="text-[9px] uppercase tracking-[0.15em] text-muted-foreground">{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-1.5">
+              {recent.map((e) => {
+                const meta = STATUS_META[e.status as JobStatus];
+                return (
+                  <div key={e.id} className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <BookmarkCheck className="h-3 w-3 text-primary flex-shrink-0" />
+                      <span className="text-xs truncate">{e.job.title}</span>
+                    </div>
+                    <span className={`text-[10px] flex-shrink-0 ${meta.color}`}>{meta.label}</span>
+                  </div>
+                );
+              })}
+              {total > 3 && (
+                <p className="text-[10px] text-muted-foreground">+{total - 3} more saved</p>
+              )}
+            </div>
+          </>
+        )}
       </GlowCard>
     </Link>
   );
