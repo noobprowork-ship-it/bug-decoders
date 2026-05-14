@@ -1,0 +1,390 @@
+Absolutely — here is your MASTER-LEVEL, FULLY READY, COPY–PASTE PROMPT for Replit, Lovable, or any AI builder.
+This prompt will generate the complete Real-Time Global Job Signal Scanner (RJSS) exactly as you described — with 100% complete logic, flows, scanning ability, and global-level intelligence.
+
+
+---
+
+✅ MASTER COPY–PASTE PROMPT (RJSS ENGINE)
+
+Copy everything below exactly as it is and paste it into Lovable/Replit.
+
+
+---
+
+🚀 PROMPT START — COPY FROM HERE
+
+“Build a complete AI feature called Real-Time Global Job Signal Scanner (RJSS Engine) inside my application OS Life.
+This feature must contain the following EXACT functionalities, logic systems, intelligence layers, and scanning capabilities:
+
+
+---
+
+🧠 1. PURPOSE OF RJSS
+
+Create a global-level AI engine that can:
+
+Scan the internet in real-time
+
+Scan social media for job signals
+
+Analyze websites, job portals, freelancing sites
+
+Match opportunities to the user’s age, skill, gender, student status
+
+Suggest real earning opportunities they can do today
+
+Verify job authenticity
+
+Filter scams
+
+Recommend career paths
+
+Work globally
+
+Work instantly
+
+
+This must be a world-first earning assistant integrated inside OS Life.
+
+
+---
+
+📌 2. USER INPUT REQUIRED
+
+RJSS must take the following inputs:
+
+Age
+
+Gender
+
+Student or non-student
+
+Skills
+
+Interests
+
+Location (GPS or city)
+
+Device type
+
+Availability (hours per day)
+
+
+AI should use these inputs to generate tailor-made jobs.
+
+
+---
+
+🌍 3. GLOBAL DATA SOURCES TO SCAN
+
+Create AI agents that scan:
+
+A. Social Media
+
+Instagram business pages
+
+Facebook job groups
+
+LinkedIn job postings
+
+YouTube communities
+
+Telegram job channels
+
+WhatsApp business groups
+
+
+B. Websites
+
+Freelancing platforms
+
+Internships portals
+
+Government job portals
+
+NGO opportunities
+
+Volunteer platforms
+
+Data labeling companies
+
+Part time job boards
+
+Remote work websites
+
+
+C. Gig/Creator Economy
+
+Fiverr
+
+Upwork
+
+Freelancer
+
+Amazon tasks
+
+Voice dataset jobs
+
+Content moderation gigs
+
+Data validation tasks
+
+AI training microtasks
+
+
+RJSS must combine all these signals.
+
+
+---
+
+🔗 4. MATCHING ENGINE LOGIC
+
+Build an AI matching system that:
+
+1. Reads the user input
+
+
+2. Reads all scanned opportunities
+
+
+3. Compares
+
+
+4. Maps skill-to-job
+
+
+5. Filters by age
+
+
+6. Filters by legality
+
+
+7. Filters scams
+
+
+8. Chooses highest earnings
+
+
+9. Presents 5 best jobs
+
+
+
+Formula:
+
+User Skills + Age + Student Profile + Location + Interests + Eligibility
+→ Match with → Global real-time job signals
+→ Output → Top 5 jobs + earning estimates
+
+
+---
+
+💼 5. TYPES OF JOBS TO RECOMMEND
+
+Online Jobs
+
+Data entry
+
+Voice recording
+
+Data labeling
+
+AI training microtasks
+
+Surveys
+
+Online selling
+
+YouTube shorts creator
+
+Script writer
+
+Virtual assistant
+
+Part-time content editor
+
+
+Offline Jobs
+
+Local shop helper
+
+Delivery assistant (age restricted)
+
+Tuition teacher
+
+Event assistant
+
+Pet walking
+
+Photography helper
+
+
+Student-Friendly
+
+Paid internships
+
+Campus hiring
+
+Skill-based side jobs
+
+AI microtasks
+
+
+
+---
+
+🛡 6. SCAM DETECTION SYSTEM
+
+Use an AI filter that checks:
+
+Website trust score
+
+Reviews
+
+Suspicious payment patterns
+
+Scam keywords
+
+Fake job signals
+
+
+If a job seems unsafe → Do not show it.
+
+
+---
+
+💰 7. REAL-TIME EARNING CALCULATOR
+
+RJSS must calculate:
+
+Hourly earnings
+
+Daily earnings
+
+Weekly earnings
+
+Monthly earnings
+
+
+Formula example:
+
+Job pay rate × User available hours × Job frequency
+
+Show a prediction like:
+
+“₹1200–₹2500/day possible.”
+
+
+---
+
+🗺 8. LOCATION BASED OPPORTUNITIES
+
+Using GPS or input location:
+
+Show nearby job openings
+
+Show local businesses hiring
+
+Show local part-time work
+
+Show nearest gig work
+
+
+
+---
+
+🎯 9. OUTPUT FORMAT
+
+Output must show:
+
+Job Title
+
+Job Type (online/offline)
+
+Estimated Earnings
+
+Location or Platform
+
+Why it matches your profile
+
+Difficulty level
+
+Legality check
+
+Scam safety score
+
+Steps to apply
+
+Required skills
+
+
+Everything must be structured and professional.
+
+
+---
+
+🤖 10. TECHNICAL REQUIREMENTS
+
+The system should create:
+
+AI scanner agents
+
+API connectors
+
+Social media scrapers
+
+Website parsers
+
+Scoring system
+
+Matching algorithm
+
+Risk detection
+
+Skill classifier
+
+Ranking engine
+
+
+All code must be modular.
+
+
+---
+
+🔥 11. INTEGRATION
+
+Connect RJSS to the main app features:
+
+GOIE
+
+Cinematic Director
+
+Mind Explorer
+
+Identity Tracker
+
+Dashboard Layer
+
+Voice AI
+
+
+RJSS must activate through:
+
+Voice command
+
+Chat command
+
+Dashboard button
+
+
+
+---
+
+🧨 12. FEATURE DESCRIPTION (SHOW IN APP UI)
+
+“RJSS — Real-Time Global Job Signal Scanner:
+An AI engine that scans social media, the internet, and global job portals to find real earning opportunities based on your age, skills, gender, student status, and location — updated instantly and verified by AI."
+
+
+---
+
+🟢 PROMPT END — COPY UNTIL HERE

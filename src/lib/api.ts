@@ -390,8 +390,51 @@ export function openVoiceCompanion(opts: {
   };
 }
 
+export interface RjssProfile {
+  age?: string;
+  gender?: string;
+  student?: boolean;
+  skills?: string[];
+  interests?: string[];
+  location?: string;
+  hoursPerDay?: number;
+  currency?: string;
+}
+
+export interface RjssJob {
+  title: string;
+  type: "online" | "offline" | "hybrid";
+  platform: string;
+  estimatedEarnings: { hourly: string; daily: string; weekly: string; monthly: string };
+  whyItMatches: string;
+  difficulty: "beginner" | "intermediate" | "advanced";
+  legalityCheck: "verified" | "regional-restrictions" | "verify-locally";
+  scamSafeScore: number;
+  applySteps: string[];
+  requiredSkills: string[];
+  sourceUrl: string;
+  sourceName: string;
+}
+
+export interface RjssScanResult {
+  jobs: RjssJob[];
+  scanMode: "web_search" | "fallback";
+  userEarningPotential: string;
+  profileSummary: string;
+  tips: string[];
+}
+
+export const rjss = {
+  scan: (profile: RjssProfile) =>
+    request<RjssScanResult>("/api/rjss/scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeader() },
+      body: JSON.stringify(profile),
+    }),
+};
+
 export default {
   auth, ai, commandCenter, identity, multiverse, cinematic, reality, mind,
-  goie, decision, activity, onboarding, dashboard, openVoiceCompanion,
+  goie, decision, activity, onboarding, dashboard, rjss, openVoiceCompanion,
   getToken, setToken,
 };
