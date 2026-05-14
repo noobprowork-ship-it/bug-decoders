@@ -428,7 +428,6 @@ export const rjss = {
   scan: (profile: RjssProfile) =>
     request<RjssScanResult>("/api/rjss/scan", {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeader() },
       body: JSON.stringify(profile),
     }),
 };
