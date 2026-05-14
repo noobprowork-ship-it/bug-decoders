@@ -128,13 +128,6 @@ function Voice() {
               )}
               {/* Voice gender indicator */}
               <button
-                onClick={() => setSettingsOpen(true)}
-                className="text-[11px] glass rounded-full px-3 py-1.5 hover:bg-white/10 transition font-medium text-muted-foreground"
-                title="Open voice settings"
-              >
-                {GENDER_LABELS[gender] || "⚡ Auto"}
-              </button>
-              <button
                 onClick={toggleVoice}
                 className="h-9 w-9 rounded-full glass flex items-center justify-center hover:bg-white/10 transition"
                 aria-label={voiceOn ? "Mute voice replies" : "Unmute voice replies"}
@@ -160,7 +153,7 @@ function Voice() {
                   <div className="h-20 w-20 rounded-full bg-aurora animate-pulse-glow mx-auto mb-4 flex items-center justify-center">
                     <Mic className="h-8 w-8 text-primary-foreground" />
                   </div>
-                  <p className="text-muted-foreground text-sm">Ask Aurora anything — life, work, decisions, ideas.</p>
+                  <p className="text-muted-foreground text-sm">Ask me anything — life, work, decisions, ideas.</p>
                 </div>
               </div>
             )}
@@ -186,7 +179,7 @@ function Voice() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") send(); }}
-              placeholder="Type to Aurora…"
+              placeholder="Ask anything…"
               disabled={!connected || streaming}
               className="flex-1 glass rounded-2xl px-4 py-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary min-w-0"
             />

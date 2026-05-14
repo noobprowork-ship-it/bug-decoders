@@ -232,7 +232,7 @@ wss.on("connection", (ws) => {
           {
             role: "system",
             content:
-              "You are Aurora — a calm, insightful AI life companion (JARVIS-like). " +
+              "You are LifeOS — a calm, insightful AI life companion (JARVIS-like). " +
               "Reply in short, warm, voice-friendly sentences. Be direct and helpful.",
           },
           ...history.map((m) => ({ role: m.role, content: m.content })),

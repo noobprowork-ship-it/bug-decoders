@@ -56,7 +56,7 @@ export async function tryAI(fn) {
     throw new AIError({
       status: 503,
       code: "ai_not_configured",
-      message: "Aurora's AI provider is not configured on this server.",
+      message: "LifeOS AI provider is not configured on this server.",
       hint: "Connect Replit AI Integrations or set OPENAI_API_KEY in the server environment.",
     });
   }
@@ -72,7 +72,7 @@ export async function tryAI(fn) {
       throw new AIError({
         status: 503,
         code: "ai_quota_exceeded",
-        message: "Aurora's AI provider is out of credits.",
+        message: "LifeOS AI provider is out of credits.",
         hint: "Add billing or top up credits on the OpenAI account behind OPENAI_API_KEY, then try again.",
         providerStatus,
         providerCode,
@@ -84,7 +84,7 @@ export async function tryAI(fn) {
       throw new AIError({
         status: 503,
         code: "ai_rate_limited",
-        message: "Aurora is being rate-limited by the AI provider.",
+        message: "LifeOS is being rate-limited by the AI provider.",
         hint: "Wait a few seconds and try again.",
         providerStatus,
         providerCode,
@@ -96,7 +96,7 @@ export async function tryAI(fn) {
       throw new AIError({
         status: 503,
         code: "ai_auth_failed",
-        message: "Aurora's AI provider rejected the API key.",
+        message: "LifeOS AI provider rejected the API key.",
         hint: "Replace OPENAI_API_KEY with a valid key and restart the server.",
         providerStatus,
         providerCode,
@@ -108,7 +108,7 @@ export async function tryAI(fn) {
       throw new AIError({
         status: 502,
         code: "ai_provider_down",
-        message: "Aurora's AI provider is temporarily unavailable.",
+        message: "LifeOS AI provider is temporarily unavailable.",
         hint: "Try again in a moment.",
         providerStatus,
         providerCode,

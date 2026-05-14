@@ -127,6 +127,72 @@ export async function exploreMindUniverse(req, res, next) {
   }
 }
 
+export async function generateThoughts(req, res, next) {
+  try {
+    if (!requireFields(req.body, ["subject"], res)) return;
+    const { subject } = req.body;
+
+    const completion = await tryAI(() =>
+      openai.chat.completions.create({
+        model: CHAT_MODEL,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are LifeOS's Cognitive Historian. Given any notable person (historical or contemporary), output strict JSON ONLY: " +
+              "{ name:string, era:string, field:string, thinkingStyle:string, " +
+              "innovations:[string(max 6)], cognitivePatterns:[string(max 5)], mentalModels:[string(max 5)], " +
+              "imagePrompt:string }. " +
+              "imagePrompt: a vivid, detailed visual art prompt (under 200 chars) for an abstract painting representing their mind — suitable for DALL·E/GPT-Image. " +
+              "Make it atmospheric, rich with metaphor, and unique to them.",
+          },
+          { role: "user", content: `Subject: ${subject}` },
+        ],
+      })
+    );
+
+    const raw = completion.choices?.[0]?.message?.content ?? "{}";
+    const parsed = safeJSON(raw, {});
+
+    const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
+    const FALLBACK_MODEL = process.env.OPENAI_IMAGE_FALLBACK_MODEL || "dall-e-3";
+    const prompt = (parsed.imagePrompt || `Abstract visualization of ${subject}'s mind and ideas — vivid, surreal, masterwork`).slice(0, 1000);
+
+    let image = null;
+    try {
+      const imgResult = await openai.images.generate({
+        model: IMAGE_MODEL,
+        prompt,
+        n: 1,
+        size: "1024x1024",
+      });
+      const url = imgResult.data?.[0]?.url;
+      const b64 = imgResult.data?.[0]?.b64_json;
+      if (url) image = { url };
+      else if (b64) image = { dataUrl: `data:image/png;base64,${b64}` };
+    } catch (imgErr) {
+      console.warn("[thoughtsGenerate] Primary model failed, trying fallback:", imgErr?.message);
+      try {
+        const imgResult2 = await openai.images.generate({
+          model: FALLBACK_MODEL,
+          prompt,
+          n: 1,
+          size: "1024x1024",
+        });
+        const url = imgResult2.data?.[0]?.url;
+        if (url) image = { url };
+      } catch (fallbackErr) {
+        console.warn("[thoughtsGenerate] Fallback also failed:", fallbackErr?.message);
+      }
+    }
+
+    return res.json({ ...parsed, image });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 export async function listMindSessions(req, res) {
   const sessions = await tryDB(
     () =>

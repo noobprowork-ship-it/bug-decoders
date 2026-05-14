@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Shell } from "@/components/aurora/Shell";
 import { GlowCard, PageHeader, StatChip, NeonButton } from "@/components/aurora/ui";
-import { Sparkles, Mic, ArrowUpRight, Globe2, GitBranch, Brain, Clapperboard, Compass, Loader2 } from "lucide-react";
+import { Sparkles, ArrowUpRight, Globe2, GitBranch, Brain, Clapperboard, Compass, Loader2 } from "lucide-react";
 import { dashboard } from "@/lib/api";
 import { getStoredUser } from "@/lib/user";
 
@@ -63,7 +63,6 @@ function Dashboard() {
               : "Try a module below — LifeOS is online and ready."}
           </p>
         </div>
-        <Link to="/voice"><NeonButton><Mic className="inline h-4 w-4 mr-2" /> Talk to LifeOS</NeonButton></Link>
       </div>
 
       {loading && (
@@ -98,7 +97,7 @@ function Dashboard() {
           <ul className="space-y-2 text-sm text-muted-foreground">
             {(data?.insights || []).slice(1).map((s, i) => <li key={i}>· {s}</li>)}
             {(!data?.insights || data.insights.length === 0) && !loading && (
-              <li className="text-muted-foreground">Aurora will surface insights as you use the modules.</li>
+              <li className="text-muted-foreground">LifeOS will surface insights as you use the modules.</li>
             )}
           </ul>
           {data?.predictions && data.predictions.length > 0 && (
@@ -127,7 +126,7 @@ function Dashboard() {
             </div>
             <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-1">LifeOS</div>
             <p className="text-sm">Ask me anything — life, work, decisions, ideas.</p>
-            <Link to="/voice"><NeonButton className="mt-4">Open companion</NeonButton></Link>
+            <p className="text-xs text-muted-foreground mt-3">Use the LifeOS button on the right →</p>
           </div>
         </GlowCard>
 

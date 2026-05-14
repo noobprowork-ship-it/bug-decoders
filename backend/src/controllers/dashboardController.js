@@ -56,7 +56,7 @@ export async function getDashboard(req, res, next) {
             {
               role: "system",
               content:
-                "You are Aurora's Dashboard Intelligence. Output strict JSON ONLY: { insights:[3 short strings], predictions:[{horizon,claim,confidence(0-1)}] }.",
+                "You are LifeOS Dashboard Intelligence. Output strict JSON ONLY: { insights:[3 short strings], predictions:[{horizon,claim,confidence(0-1)}] }.",
             },
             {
               role: "user",

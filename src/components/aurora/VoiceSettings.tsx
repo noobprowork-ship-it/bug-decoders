@@ -19,14 +19,14 @@ const GENDER_OPTIONS: { value: VoiceGender; label: string; emoji: string }[] = [
 ];
 
 const MALE_PREVIEW   = "Hello. I'm your LifeOS assistant. How can I help you today?";
-const FEMALE_PREVIEW = "Hi, I'm Aurora. This is how I'll sound when we talk.";
+const FEMALE_PREVIEW = "Hi, I'm your LifeOS companion. This is how I'll sound when we talk.";
 
 export function VoiceSettings({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [voices, setVoicesState] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceName, setVoiceName] = useState<string | null>(null);
   const [rate, setRate]           = useState(1);
-  const [pitch, setPitch]         = useState(DEFAULT_PITCH.female);
-  const [gender, setGender]       = useState<VoiceGender>("female");
+  const [pitch, setPitch]         = useState(DEFAULT_PITCH.male);
+  const [gender, setGender]       = useState<VoiceGender>("male");
   const [enabled, setEnabled]     = useState(true);
   const [autoVoice, setAutoVoice] = useState<string | null>(null);
 

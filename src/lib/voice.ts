@@ -62,9 +62,9 @@ export function setVoiceEnabled(on: boolean) {
 
 export function getVoiceTone(): VoiceTone {
   if (typeof window === "undefined") {
-    return { voiceName: null, rate: 1, pitch: DEFAULT_PITCH.female, gender: "female" };
+    return { voiceName: null, rate: 1, pitch: DEFAULT_PITCH.male, gender: "male" };
   }
-  const gender = (window.localStorage.getItem(KEY_GENDER) as VoiceGender) || "female";
+  const gender = (window.localStorage.getItem(KEY_GENDER) as VoiceGender) || "male";
   const storedPitch = window.localStorage.getItem(KEY_PITCH);
   return {
     voiceName: window.localStorage.getItem(KEY_VOICE),

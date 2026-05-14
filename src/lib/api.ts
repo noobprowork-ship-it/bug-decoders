@@ -249,6 +249,12 @@ export const mind = {
     request("/api/mind/decode", json(body)),
   explore: (body: { responses: Record<string, string> }) =>
     request("/api/mind/explore", json(body)),
+  thoughts: (body: { subject: string }) =>
+    request<{
+      name?: string; era?: string; field?: string; thinkingStyle?: string;
+      innovations?: string[]; cognitivePatterns?: string[]; mentalModels?: string[];
+      image?: { url: string } | { dataUrl: string } | null;
+    }>("/api/mind/thoughts", json(body)),
   sessions: () => request("/api/mind/sessions"),
 };
 

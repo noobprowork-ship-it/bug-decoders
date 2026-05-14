@@ -5,7 +5,7 @@ import { GlowCard, PageHeader, NeonButton, StatChip } from "@/components/aurora/
 import {
   Compass, Loader2, Sparkles, Brain, Briefcase, Activity, Trash2,
   RefreshCcw, AlertTriangle, Clock, Flame, Monitor, Bell, BellOff,
-  BarChart3, TrendingUp, Send, CheckCircle2,
+  BarChart3, TrendingUp, Send, CheckCircle2, Zap, Layout,
 } from "lucide-react";
 import { summarize, clearEvents, getLiveFocusMinutes } from "@/lib/activityTracker";
 import { ApiError, getToken } from "@/lib/api";
@@ -194,6 +194,9 @@ function Explore() {
         <StatChip label="Day streak"       value={`${stats.streakDays}🔥`} />
         <StatChip label="Total sessions"  value={String(stats.sessionCount || 1)} accent="purple" />
       </div>
+
+      {/* ── Screen-time intelligence ──────────────────────────────────────── */}
+      <ScreenTimeCard stats={stats} focusMin={focusMin} />
 
       {/* ── Device Analytics & Permissions ────────────────────────────────── */}
       <GlowCard glow="purple" className="mb-6">
@@ -563,6 +566,138 @@ function Explore() {
         </div>
       )}
     </Shell>
+  );
+}
+
+const PAGE_NAMES: Record<string, string> = {
+  "/dashboard": "Dashboard", "/goie": "GOIE", "/multiverse": "Multiverse",
+  "/cinematic": "Cinematic", "/mind": "Mind", "/explore": "Explore",
+  "/voice": "Voice AI", "/profile": "Profile",
+};
+
+function ScreenTimeCard({ stats, focusMin }: { stats: ReturnType<typeof summarize>; focusMin: number }) {
+  const prodScore = Math.min(100, Math.round(
+    Math.min(40, (focusMin / 30) * 40) +
+    Math.min(30, stats.viewsLast7d * 4) +
+    Math.min(30, stats.streakDays * 6)
+  ));
+
+  const last30: string[] = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    last30.push(d.toISOString().slice(0, 10));
+  }
+  const actMap = new Map<string, number>(stats.dailyActivity as [string, number][]);
+  const maxCount = Math.max(1, ...last30.map((d) => actMap.get(d) || 0));
+
+  function cellColor(count: number) {
+    if (count === 0) return "bg-white/5";
+    const pct = count / maxCount;
+    if (pct < 0.25) return "bg-primary/20";
+    if (pct < 0.5)  return "bg-primary/45";
+    if (pct < 0.75) return "bg-primary/70";
+    return "bg-primary";
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const topModules = (stats.topPages as { target: string; count: number; minutes: number }[])
+    .slice(0, 5)
+    .map((p) => ({ name: PAGE_NAMES[p.target] || p.target, count: p.count, minutes: p.minutes }));
+  const totalModuleVisits = topModules.reduce((s, m) => s + m.count, 0) || 1;
+
+  return (
+    <GlowCard glow="blue" className="mb-6">
+      <div className="flex items-center gap-2 mb-5">
+        <div className="h-9 w-9 rounded-2xl bg-aurora/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
+          <Zap className="h-4 w-4 text-primary" />
+        </div>
+        <div>
+          <h3 className="font-display font-semibold text-sm">Screen-time intelligence</h3>
+          <p className="text-[11px] text-muted-foreground">Your productivity score and 30-day activity heatmap.</p>
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-6">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2 flex items-center gap-1.5">
+            <TrendingUp className="h-3 w-3" /> Productivity score
+          </div>
+          <div className="flex items-end gap-3 mb-2">
+            <div className="font-display text-5xl font-bold text-gradient tabular-nums">{prodScore}</div>
+            <div className="text-muted-foreground text-sm mb-1.5">/100</div>
+          </div>
+          <div className="h-2.5 rounded-full bg-white/5 overflow-hidden mb-2">
+            <div
+              className="h-full bg-aurora transition-all duration-700 rounded-full"
+              style={{ width: `${prodScore}%` }}
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 text-[10px] text-muted-foreground">
+            <div className="glass rounded-lg px-2 py-1.5 text-center">
+              <div className="text-primary font-bold text-sm">{Math.min(40, Math.round((focusMin / 30) * 40))}</div>
+              Focus
+            </div>
+            <div className="glass rounded-lg px-2 py-1.5 text-center">
+              <div className="text-primary font-bold text-sm">{Math.min(30, stats.viewsLast7d * 4)}</div>
+              Sessions
+            </div>
+            <div className="glass rounded-lg px-2 py-1.5 text-center">
+              <div className="text-primary font-bold text-sm">{Math.min(30, stats.streakDays * 6)}</div>
+              Streak
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2 flex items-center gap-1.5">
+            <BarChart3 className="h-3 w-3" /> 30-day activity
+          </div>
+          <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
+            {last30.map((date) => {
+              const count = actMap.get(date) || 0;
+              return (
+                <div
+                  key={date}
+                  className={`rounded-sm aspect-square transition-all ${cellColor(count)} ${date === today ? "ring-1 ring-primary" : ""}`}
+                  title={`${date}: ${count} events`}
+                />
+              );
+            })}
+          </div>
+          <div className="flex items-center justify-end gap-1.5 mt-1.5 text-[9px] text-muted-foreground">
+            <span>Less</span>
+            <div className="h-2.5 w-2.5 rounded-sm bg-white/5" />
+            <div className="h-2.5 w-2.5 rounded-sm bg-primary/25" />
+            <div className="h-2.5 w-2.5 rounded-sm bg-primary/50" />
+            <div className="h-2.5 w-2.5 rounded-sm bg-primary" />
+            <span>More</span>
+          </div>
+        </div>
+      </div>
+
+      {topModules.length > 0 && (
+        <div className="mt-5 pt-4 border-t border-white/5">
+          <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-3 flex items-center gap-1.5">
+            <Layout className="h-3 w-3" /> Top modules this session
+          </div>
+          <div className="space-y-2">
+            {topModules.map((m, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="text-xs text-muted-foreground w-20 truncate">{m.name}</div>
+                <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                  <div
+                    className="h-full bg-aurora rounded-full transition-all duration-500"
+                    style={{ width: `${Math.round((m.count / totalModuleVisits) * 100)}%` }}
+                  />
+                </div>
+                <div className="text-[10px] text-muted-foreground w-12 text-right">{m.count}× · {m.minutes}m</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </GlowCard>
   );
 }
 

@@ -25,7 +25,7 @@ const PAGE_HINTS: Record<string, string> = {
 };
 
 const WELCOME =
-  "Hi, I'm Aurora — your LifeOS companion. Tap the radar to talk hands-free, or type below. " +
+  "Hi, I'm your LifeOS companion. Tap the radar to talk hands-free, or type below. " +
   "Ask me anything, including current news, markets, or world events.";
 
 const NEWS_TRIGGERS = /\b(news|today|latest|current|right now|markets?|stock|stocks?|s&p|nasdaq|war|elect|space|launch|nasa|spacex|score|match|crypto|bitcoin|ethereum|weather)\b/i;
@@ -223,7 +223,7 @@ export function AssistantBot() {
         setListening(false);
         setInterim("");
         if (e.code === "not-allowed" || e.code === "service-not-allowed") {
-          setErr("Microphone permission denied. Allow it in your browser to talk to Aurora.");
+          setErr("Microphone permission denied. Allow it in your browser to talk to LifeOS.");
         } else if (e.code !== "no-speech" && e.code !== "aborted") {
           setErr(e.message);
         }
@@ -300,7 +300,7 @@ export function AssistantBot() {
                 <Sparkles className="h-4 w-4 text-primary-foreground" />
               </div>
               <div className="min-w-0">
-                <div className="text-sm font-display font-semibold">Aurora · LifeOS</div>
+                <div className="text-sm font-display font-semibold">LifeOS AI</div>
                 <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 truncate">
                   {streaming ? (
                     "Thinking…"
