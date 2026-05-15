@@ -6,10 +6,16 @@
 // You can pass additional config via defineConfig({ vite: { ... } }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL     = process.env.BACKEND_URL     || "http://localhost:3001";
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 
 export default defineConfig({
   vite: {
+    define: {
+      // Expose GOOGLE_CLIENT_ID to the browser as import.meta.env.VITE_GOOGLE_CLIENT_ID
+      // (the VITE_ prefix is the Vite convention for browser-safe env vars)
+      "import.meta.env.VITE_GOOGLE_CLIENT_ID": JSON.stringify(GOOGLE_CLIENT_ID),
+    },
     server: {
       host: "0.0.0.0",
       port: 5000,
