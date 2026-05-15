@@ -135,6 +135,16 @@ export async function initPostgres() {
       );
       CREATE INDEX IF NOT EXISTS lifeos_saved_jobs_user_idx
         ON lifeos_saved_jobs (user_id, saved_at DESC);
+
+      CREATE TABLE IF NOT EXISTS lifeos_saved_courses (
+        id         TEXT PRIMARY KEY,
+        user_id    TEXT NOT NULL,
+        item_data  JSONB NOT NULL,
+        item_type  TEXT NOT NULL DEFAULT 'course',
+        saved_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS lifeos_saved_courses_user_idx
+        ON lifeos_saved_courses (user_id, saved_at DESC);
     `);
 
     pgReady = true;

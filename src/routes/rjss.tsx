@@ -7,7 +7,7 @@ import {
   Zap, MapPin, Clock, TrendingUp, ExternalLink, ChevronDown, ChevronUp,
   Wifi, WifiOff, BadgeCheck, Star, Briefcase, Bookmark, BookmarkCheck,
   Trash2, CheckCircle2, XCircle, MessageSquare, ChevronRight,
-  DollarSign, GraduationCap, Link,
+  DollarSign, GraduationCap, Link, Plus, X, Mail, Building2, Calendar,
 } from "lucide-react";
 import { rjss, type RjssJob, type RjssScanResult, type RjssProfile } from "@/lib/api";
 import { trackAction } from "@/lib/activityTracker";
@@ -177,11 +177,33 @@ const JobCard = memo(function JobCard({
                 </span>
               </div>
 
+              {/* Company + posted date row */}
+              {(job.company || job.postedDate) && (
+                <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                  {job.company && (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <Building2 className="h-3 w-3" />
+                      {job.companyWebsite ? (
+                        <a href={job.companyWebsite} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{job.company}</a>
+                      ) : job.company}
+                    </span>
+                  )}
+                  {job.postedDate && job.postedDate !== "Unknown" && (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <Calendar className="h-3 w-3" /> {job.postedDate}
+                    </span>
+                  )}
+                </div>
+              )}
+
               {/* Location + salary + experience row */}
-              <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+              <div className="flex items-center gap-3 mt-1 flex-wrap">
                 {job.location && (
                   <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <MapPin className="h-3 w-3" /> {job.location}
+                    <MapPin className="h-3 w-3" />
+                    {job.mapQuery ? (
+                      <a href={`https://www.google.com/maps/search/${encodeURIComponent(job.mapQuery)}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{job.location}</a>
+                    ) : job.location}
                   </span>
                 )}
                 {job.salaryRange && job.salaryRange !== "varies" && (
@@ -215,7 +237,10 @@ const JobCard = memo(function JobCard({
             </div>
           </div>
 
-          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{job.whyItMatches}</p>
+          {job.description && (
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{job.description}</p>
+          )}
+          <p className={`text-sm text-muted-foreground ${job.description ? "mt-1" : "mt-2"} leading-relaxed italic`}>{job.whyItMatches}</p>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
             {[
@@ -243,20 +268,42 @@ const JobCard = memo(function JobCard({
             ))}
           </div>
 
-          {/* Apply button (prominent) */}
-          {applyUrl && (
-            <a
-              href={applyUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => trackAction("rjss_apply_click")}
-              className="mt-3 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-aurora/20 border border-primary/30 text-primary text-[11px] font-medium hover:bg-aurora/30 transition-all"
-            >
-              <Link className="h-3 w-3" />
-              Apply on {job.sourceName || "platform"}
-              <ExternalLink className="h-2.5 w-2.5 opacity-60" />
-            </a>
-          )}
+          {/* Action buttons row */}
+          <div className="mt-3 flex gap-2 flex-wrap items-center">
+            {applyUrl && (
+              <a
+                href={applyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => trackAction("rjss_apply_click")}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-aurora/20 border border-primary/30 text-primary text-[11px] font-medium hover:bg-aurora/30 transition-all"
+              >
+                <Link className="h-3 w-3" />
+                Apply on {job.sourceName || "platform"}
+                <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+              </a>
+            )}
+            {job.mapQuery && (
+              <a
+                href={`https://www.google.com/maps/search/${encodeURIComponent(job.mapQuery)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass border border-white/10 text-muted-foreground text-[11px] hover:text-foreground transition-all"
+              >
+                <MapPin className="h-3 w-3" />
+                View on Maps
+              </a>
+            )}
+            {job.contactEmail && (
+              <a
+                href={`mailto:${job.contactEmail}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass border border-white/10 text-muted-foreground text-[11px] hover:text-foreground transition-all"
+              >
+                <Mail className="h-3 w-3" />
+                {job.contactEmail}
+              </a>
+            )}
+          </div>
 
           <button
             onClick={() => setExpanded((v) => !v)}
@@ -435,10 +482,12 @@ function RjssPage() {
     age: "", gender: "", student: false,
     skills: [], interests: [], location: "", hoursPerDay: 4,
   });
-  const [loading, setLoading] = useState(false);
-  const [result, setResult]   = useState<RjssScanResult | null>(null);
-  const [error, setError]     = useState<string | null>(null);
-  const [scanned, setScanned] = useState(false);
+  const [loading, setLoading]           = useState(false);
+  const [result, setResult]             = useState<RjssScanResult | null>(null);
+  const [error, setError]               = useState<string | null>(null);
+  const [scanned, setScanned]           = useState(false);
+  const [customSkillInput, setCustomSkillInput] = useState("");
+  const [customInterestInput, setCustomInterestInput] = useState("");
 
   const { saved, save, updateStatus, remove, isSaved } = useSavedJobs();
 
@@ -447,6 +496,26 @@ function RjssPage() {
       const arr = p[key] || [];
       return { ...p, [key]: arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value] };
     });
+  }
+
+  function addCustomSkill() {
+    const v = customSkillInput.trim();
+    if (!v) return;
+    setProfile((p) => {
+      const arr = p.skills || [];
+      return arr.includes(v) ? p : { ...p, skills: [...arr, v] };
+    });
+    setCustomSkillInput("");
+  }
+
+  function addCustomInterest() {
+    const v = customInterestInput.trim();
+    if (!v) return;
+    setProfile((p) => {
+      const arr = p.interests || [];
+      return arr.includes(v) ? p : { ...p, interests: [...arr, v] };
+    });
+    setCustomInterestInput("");
   }
 
   async function runScan() {
@@ -589,9 +658,39 @@ function RjssPage() {
 
             <div className="mb-4">
               <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground block mb-2">
-                Your skills <span className="normal-case text-muted-foreground/60">(select all that apply)</span>
+                Your skills <span className="normal-case text-muted-foreground/60">(select all that apply or add your own)</span>
               </label>
               <TagToggle items={SKILL_PRESETS} selected={profile.skills || []} onToggle={(v) => toggle("skills", v)} />
+              {/* Custom skill input */}
+              <div className="flex gap-2 mt-2">
+                <input
+                  value={customSkillInput}
+                  onChange={(e) => setCustomSkillInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") addCustomSkill(); }}
+                  placeholder="Add custom skill (e.g. AutoCAD, Spanish, Accounting)…"
+                  className="flex-1 glass rounded-xl px-3 py-2 text-sm bg-transparent outline-none border border-white/10 focus:border-primary/50 transition-colors"
+                />
+                <button
+                  onClick={addCustomSkill}
+                  className="glass rounded-xl px-3 py-2 text-sm hover:bg-white/10 transition border border-white/10"
+                  title="Add skill"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+              {/* Custom skills (not in presets) as removable pills */}
+              {(profile.skills || []).filter((s) => !SKILL_PRESETS.includes(s)).length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {(profile.skills || []).filter((s) => !SKILL_PRESETS.includes(s)).map((s) => (
+                    <span key={s} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary">
+                      {s}
+                      <button onClick={() => toggle("skills", s)} className="opacity-60 hover:opacity-100">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="mb-5">
@@ -599,6 +698,33 @@ function RjssPage() {
                 Interests <span className="normal-case text-muted-foreground/60">(optional)</span>
               </label>
               <TagToggle items={INTEREST_PRESETS} selected={profile.interests || []} onToggle={(v) => toggle("interests", v)} />
+              <div className="flex gap-2 mt-2">
+                <input
+                  value={customInterestInput}
+                  onChange={(e) => setCustomInterestInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") addCustomInterest(); }}
+                  placeholder="Add custom interest…"
+                  className="flex-1 glass rounded-xl px-3 py-2 text-sm bg-transparent outline-none border border-white/10 focus:border-primary/50 transition-colors"
+                />
+                <button
+                  onClick={addCustomInterest}
+                  className="glass rounded-xl px-3 py-2 text-sm hover:bg-white/10 transition border border-white/10"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+              {(profile.interests || []).filter((s) => !INTEREST_PRESETS.includes(s)).length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {(profile.interests || []).filter((s) => !INTEREST_PRESETS.includes(s)).map((s) => (
+                    <span key={s} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary">
+                      {s}
+                      <button onClick={() => toggle("interests", s)} className="opacity-60 hover:opacity-100">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {error && (

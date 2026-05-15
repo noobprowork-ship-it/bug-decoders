@@ -50,23 +50,29 @@ const JSON_SHAPE = `{
     {
       "title": "string",
       "type": "online|offline|hybrid",
-      "platform": "string",
+      "platform": "string — the job board or gig platform name",
+      "company": "string — the hiring company name or empty string if gig/freelance",
+      "companyWebsite": "https://company.com — the company's official site or empty string",
       "location": "city, country — or 'Remote / Global'",
+      "mapQuery": "string — a Google Maps-friendly search string e.g. 'software engineer jobs Mumbai India'",
       "salaryRange": "₹X–₹Y/hr  or  $X–$Y/hr  or  'varies'",
       "experienceRequired": "none | 0–6 months | 1–2 years | 3+ years",
       "officialLink": "https://direct-apply-link.com (real, working URL — or empty string)",
+      "contactEmail": "hr@company.com — recruiter/HR email if publicly listed, or empty string",
+      "postedDate": "string — e.g. 'May 2025', 'Posted 3 days ago', 'Rolling' or 'Unknown'",
       "estimatedEarnings": {
         "hourly": "string",
         "daily": "string",
         "weekly": "string",
         "monthly": "string"
       },
-      "whyItMatches": "string",
+      "whyItMatches": "string — 1-2 sentences explaining the match",
+      "description": "string — 2-3 sentences describing day-to-day responsibilities",
       "difficulty": "beginner|intermediate|advanced",
       "legalityCheck": "verified|regional-restrictions|verify-locally",
       "scamSafeScore": 0,
       "applySteps": ["step1", "step2"],
-      "requiredSkills": ["skill1"],
+      "requiredSkills": ["skill1", "skill2"],
       "sourceUrl": "https://platform-homepage.com",
       "sourceName": "string"
     }
@@ -90,10 +96,16 @@ function systemPrompt(liveSearch) {
     `CRITICAL: Return ONLY strict JSON matching the shape below. No markdown, no text outside JSON.\n${JSON_SHAPE}\n` +
     `Rules:\n` +
     `- Return exactly 5 jobs ranked by match quality\n` +
+    `- company: the actual hiring company name; leave empty for marketplace/freelance gigs\n` +
+    `- companyWebsite: the company's real homepage (NOT the job board URL); empty for pure gig platforms\n` +
     `- location: real city/region where the job is available, or 'Remote / Global'\n` +
+    `- mapQuery: a searchable Google Maps string e.g. 'content writer jobs Lagos Nigeria'\n` +
     `- salaryRange: real salary or hourly rate if findable; otherwise 'varies'\n` +
     `- experienceRequired: honest entry barrier — 'none' for zero-experience roles\n` +
     `- officialLink: deep link to the actual job posting or platform apply page (NOT homepage); empty string if unavailable\n` +
+    `- contactEmail: HR/recruiter email only if publicly listed on the job post; otherwise empty string\n` +
+    `- postedDate: recency of the listing if available\n` +
+    `- description: concrete day-to-day responsibilities — 2-3 sentences\n` +
     `- scamSafeScore: 0–100 (100 = verified safe). Exclude any job scoring below 60.\n` +
     `- Calibrate ALL earnings to the user's location and currency\n` +
     `- Prioritise student-friendly roles when student=true\n` +
@@ -118,7 +130,8 @@ function userPrompt(profile) {
     `Remotasks, Internshala, LinkedIn Jobs, Indeed, Naukri, Remote.co, FlexJobs, Toptal, 99designs, ` +
     `local job boards for ${location || "global"}.\n\n` +
     `TASK: Find 5 real, verified, immediately actionable earning opportunities for this profile. ` +
-    `Include real location, salary/rate, experience needed, and a direct apply link where possible. ` +
+    `Include real location, salary/rate, experience needed, company name, company website, ` +
+    `contact email (if publicly listed), posting date, and a direct apply link where possible. ` +
     `Return strict JSON only.`
   );
 }
@@ -199,7 +212,7 @@ export async function scanJobs(req, res, next) {
     const completion = await tryAI(() =>
       openai.chat.completions.create({
         model:       CHAT_MODEL,
-        max_tokens:  2000,
+        max_tokens:  2500,
         temperature: 0.3,
         messages: [
           { role: "system", content: systemPrompt(false) },

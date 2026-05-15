@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  Home, Globe2, GitBranch, Clapperboard, Brain,
-  Sparkles, Compass, MoreHorizontal, User, ScanSearch,
+  Home, Globe2, GitBranch, Brain,
+  Sparkles, Compass, MoreHorizontal, User, ScanSearch, GraduationCap,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { AssistantBot } from "./AssistantBot";
@@ -14,9 +14,9 @@ const nav = [
   { to: "/dashboard",  label: "Home",      icon: Home },
   { to: "/goie",       label: "GOIE",      icon: Globe2 },
   { to: "/multiverse", label: "Multiverse",icon: GitBranch },
-  { to: "/cinematic",  label: "Cinematic", icon: Clapperboard },
   { to: "/mind",       label: "Mind",      icon: Brain },
   { to: "/rjss",       label: "Jobs",      icon: ScanSearch },
+  { to: "/courses",    label: "Courses",   icon: GraduationCap },
   { to: "/explore",    label: "Explore",   icon: Compass },
   { to: "/profile",    label: "Profile",   icon: User },
 ] as const;

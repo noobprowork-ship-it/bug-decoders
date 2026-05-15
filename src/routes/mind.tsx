@@ -19,15 +19,6 @@ type Decoding = {
   mindmap?: MindMapData;
 };
 
-type Universe = {
-  personality?: { type?: string; traits?: { name: string; score: number }[] };
-  thinkingPatterns?: string[];
-  cognitiveBiases?: string[];
-  preferredEnvironments?: string[];
-  growthLevers?: string[];
-  mindmap?: MindMapData;
-};
-
 type ThoughtsResult = {
   name?: string;
   era?: string;
@@ -38,14 +29,6 @@ type ThoughtsResult = {
   mentalModels?: string[];
   image?: { url: string } | { dataUrl: string } | null;
 };
-
-const UNIVERSE_QS: { id: string; q: string }[] = [
-  { id: "energy", q: "When do you feel most alive?" },
-  { id: "decision_style", q: "How do you usually make big decisions?" },
-  { id: "stress", q: "What does stress look like in your body and mind?" },
-  { id: "ambition", q: "What would a perfect 12 months look like?" },
-  { id: "fear", q: "What's a fear that quietly shapes your choices?" },
-];
 
 const PRESET_THINKERS = [
   "Leonardo da Vinci",
@@ -59,14 +42,11 @@ const PRESET_THINKERS = [
 ];
 
 function Mind() {
-  const [tab, setTab] = useState<"decode" | "universe" | "thoughts">("decode");
+  const [tab, setTab] = useState<"decode" | "thoughts">("decode");
 
   const [thoughts, setThoughts] = useState("");
   const [mood, setMood] = useState("");
   const [decoding, setDecoding] = useState<Decoding | null>(null);
-
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [universe, setUniverse] = useState<Universe | null>(null);
 
   const [subject, setSubject] = useState("");
   const [thoughtsResult, setThoughtsResult] = useState<ThoughtsResult | null>(null);
@@ -81,15 +61,6 @@ function Mind() {
       const data = await mind.decode({ thoughts, mood: mood || undefined }) as { decoding: Decoding };
       setDecoding(data.decoding);
     } catch (e) { setError(e instanceof Error ? e.message : "Decoding failed"); }
-    finally { setLoading(false); }
-  }
-
-  async function onExplore() {
-    setLoading(true); setError(null);
-    try {
-      const data = await mind.explore({ responses: answers }) as Universe;
-      setUniverse(data);
-    } catch (e) { setError(e instanceof Error ? e.message : "Exploration failed"); }
     finally { setLoading(false); }
   }
 
@@ -109,12 +80,11 @@ function Mind() {
 
   return (
     <Shell>
-      <PageHeader eyebrow="Module 06" icon={Brain} title="Mind" subtitle="Decode your thoughts, explore your inner universe, or visualize how great minds think." />
+      <PageHeader eyebrow="Module 06" icon={Brain} title="Mind" subtitle="Decode your thoughts and map your mind, or visualize how great minds throughout history think." />
 
       <div className="flex gap-2 mb-6 flex-wrap">
         {[
           { id: "decode",   label: "Mind Decoder" },
-          { id: "universe", label: "Universe Explorer" },
           { id: "thoughts", label: "Thought Visuals" },
         ].map((t) => (
           <button
@@ -182,72 +152,6 @@ function Mind() {
                   <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">LifeOS suggests</div>
                   <ul className="space-y-1 text-sm">
                     {(decoding.recommendations || []).map((r, i) => <li key={i}>→ {r}</li>)}
-                  </ul>
-                </GlowCard>
-              </div>
-            </>
-          )}
-        </>
-      )}
-
-      {tab === "universe" && (
-        <>
-          <GlowCard glow="blue" className="mb-6">
-            <div className="space-y-4">
-              {UNIVERSE_QS.map((q) => (
-                <div key={q.id}>
-                  <label className="text-sm">{q.q}</label>
-                  <input
-                    value={answers[q.id] || ""}
-                    onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
-                    className="mt-2 w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary"
-                  />
-                </div>
-              ))}
-              <NeonButton onClick={onExplore} disabled={loading || Object.keys(answers).length < 3}>
-                {loading ? <><Loader2 className="inline h-4 w-4 mr-2 animate-spin" /> Mapping</> : <><Sparkles className="inline h-4 w-4 mr-2" /> Map my mind universe</>}
-              </NeonButton>
-            </div>
-          </GlowCard>
-
-          {universe && (
-            <>
-              {universe.mindmap && (
-                <GlowCard glow="purple" className="mb-4 animate-rise">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Network className="h-4 w-4 text-primary" />
-                    <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Your mind universe</div>
-                  </div>
-                  <MindMap data={universe.mindmap} />
-                </GlowCard>
-              )}
-              <div className="grid md:grid-cols-2 gap-4">
-                <GlowCard glow="purple">
-                  <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-1">Personality</div>
-                  <div className="font-display text-xl font-bold text-gradient mb-4">{universe.personality?.type || "—"}</div>
-                  <div className="space-y-2">
-                    {(universe.personality?.traits || []).map((t, i) => (
-                      <div key={i}>
-                        <div className="flex justify-between text-xs mb-1"><span>{t.name}</span><span className="text-muted-foreground">{t.score}</span></div>
-                        <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
-                          <div className="h-full bg-aurora" style={{ width: `${Math.min(100, Math.max(0, t.score || 0))}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </GlowCard>
-                <GlowCard glow="blue">
-                  <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Thinking patterns</div>
-                  <ul className="space-y-1 text-sm mb-4">
-                    {(universe.thinkingPatterns || []).map((p, i) => <li key={i}>· {p}</li>)}
-                  </ul>
-                  <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Cognitive biases</div>
-                  <ul className="space-y-1 text-sm mb-4">
-                    {(universe.cognitiveBiases || []).map((p, i) => <li key={i}>· {p}</li>)}
-                  </ul>
-                  <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Growth levers</div>
-                  <ul className="space-y-1 text-sm">
-                    {(universe.growthLevers || []).map((p, i) => <li key={i}>→ {p}</li>)}
                   </ul>
                 </GlowCard>
               </div>
@@ -360,7 +264,7 @@ function Mind() {
                 </ul>
               </GlowCard>
 
-              <GlowCard glow="purple" className={imageUrl ? "" : ""}>
+              <GlowCard glow="purple">
                 <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-2">Mental models</div>
                 <ul className="space-y-1.5 text-sm">
                   {(thoughtsResult.mentalModels || []).map((m, i) => <li key={i}>→ {m}</li>)}

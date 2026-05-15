@@ -229,12 +229,62 @@ export const multiverse = {
   list: () => request("/api/multiverse"),
 };
 
-// ---------------- Cinematic Director ----------------
-export const cinematic = {
-  generate: (body: { theme: string; scenes?: number; tone?: string; protagonist?: string }) =>
-    request("/api/cinematic/generate", json(body)),
-  list: () => request("/api/cinematic"),
-  get: (id: string) => request(`/api/cinematic/${encodeURIComponent(id)}`),
+// ---------------- Courses & Internships ----------------
+export interface FreeCourse {
+  title: string;
+  provider: string;
+  providerUrl: string;
+  courseUrl: string;
+  topic: string;
+  level: "beginner" | "intermediate" | "advanced";
+  durationHours: number;
+  durationLabel: string;
+  certificate: boolean;
+  certificateName: string;
+  language: string;
+  rating: number;
+  ratingCount: number;
+  skills: string[];
+  description: string;
+  prerequisites: string;
+  isFree: boolean;
+  paidOption: string;
+}
+
+export interface Internship {
+  role: string;
+  company: string;
+  companyWebsite: string;
+  location: string;
+  type: "remote" | "onsite" | "hybrid";
+  duration: string;
+  stipend: string;
+  skills: string[];
+  description: string;
+  requirements: string;
+  applyUrl: string;
+  applyPlatform: string;
+  deadline: string;
+  perks: string[];
+  scamSafeScore: number;
+  title: string; // alias for saved-list compatibility
+}
+
+export const courses = {
+  findFree: (body: { topic: string; level?: string; maxHours?: number; wantsCertificate?: boolean; language?: string; count?: number }) =>
+    request<{ courses: FreeCourse[]; searchSummary: string; totalFound: number; scanMode: "web_search" | "fallback" }>(
+      "/api/courses/free", json(body)
+    ),
+  findInternships: (body: { skills?: string[]; location?: string; type?: string; field?: string; student?: boolean; count?: number }) =>
+    request<{ internships: Internship[]; searchSummary: string; totalFound: number; scanMode: "web_search" | "fallback" }>(
+      "/api/courses/internships", json(body)
+    ),
+  save: (payload: { id: string; item: FreeCourse | Internship; itemType: "course" | "internship" }) =>
+    request<{ ok: boolean }>("/api/courses/save", json(payload)),
+  getSaved: () =>
+    request<{ entries: { id: string; item: FreeCourse | Internship; itemType: string; savedAt: string }[] }>("/api/courses/saved"),
+  removeSaved: (id: string) =>
+    request<{ ok: boolean }>(`/api/courses/saved/${id}`, { method: "DELETE" }),
 };
 
 // ---------------- Reality Architect Engine ----------------
@@ -411,12 +461,18 @@ export interface RjssJob {
   title: string;
   type: "online" | "offline" | "hybrid";
   platform: string;
+  company?: string;
+  companyWebsite?: string;
   location: string;
+  mapQuery?: string;
   salaryRange: string;
   experienceRequired: string;
   officialLink: string;
+  contactEmail?: string;
+  postedDate?: string;
   estimatedEarnings: { hourly: string; daily: string; weekly: string; monthly: string };
   whyItMatches: string;
+  description?: string;
   difficulty: "beginner" | "intermediate" | "advanced";
   legalityCheck: "verified" | "regional-restrictions" | "verify-locally";
   scamSafeScore: number;
@@ -459,7 +515,7 @@ export const rjss = {
 };
 
 export default {
-  auth, ai, commandCenter, identity, multiverse, cinematic, reality, mind,
+  auth, ai, commandCenter, identity, multiverse, reality, mind, courses,
   goie, decision, activity, onboarding, dashboard, rjss, openVoiceCompanion,
   getToken, setToken,
 };
