@@ -5,6 +5,40 @@ import { tryPg, pgQuery } from "../config/postgres.js";
 const CHAT_MODEL   = process.env.OPENAI_CHAT_MODEL   || "gpt-4o-mini";
 const SEARCH_MODEL = process.env.OPENAI_SEARCH_MODEL || "gpt-4o";
 
+// ── In-memory scan cache (avoids repeat AI calls for the same profile) ───────
+const scanCache  = new Map(); // key → { data, expires }
+const CACHE_TTL  = 20 * 60 * 1000; // 20 minutes
+
+function cacheKey(profile) {
+  const { age = "", gender = "", student = false, skills = [], interests = [], location = "", currency = "" } = profile;
+  return JSON.stringify({
+    a:  String(age).trim(),
+    g:  gender,
+    s:  Boolean(student),
+    sk: [...skills].sort(),
+    i:  [...interests].sort(),
+    l:  location.toLowerCase().trim(),
+    c:  currency.toUpperCase().trim(),
+  });
+}
+
+function getCache(profile) {
+  const k = cacheKey(profile);
+  const hit = scanCache.get(k);
+  if (hit && Date.now() < hit.expires) return hit.data;
+  scanCache.delete(k);
+  return null;
+}
+
+function setCache(profile, data) {
+  // Keep cache lean — evict oldest entries when > 50
+  if (scanCache.size >= 50) {
+    const oldestKey = scanCache.keys().next().value;
+    scanCache.delete(oldestKey);
+  }
+  scanCache.set(cacheKey(profile), { data, expires: Date.now() + CACHE_TTL });
+}
+
 function todayStr() {
   return new Date().toLocaleDateString("en-US", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
@@ -17,6 +51,10 @@ const JSON_SHAPE = `{
       "title": "string",
       "type": "online|offline|hybrid",
       "platform": "string",
+      "location": "city, country — or 'Remote / Global'",
+      "salaryRange": "₹X–₹Y/hr  or  $X–$Y/hr  or  'varies'",
+      "experienceRequired": "none | 0–6 months | 1–2 years | 3+ years",
+      "officialLink": "https://direct-apply-link.com (real, working URL — or empty string)",
       "estimatedEarnings": {
         "hourly": "string",
         "daily": "string",
@@ -27,35 +65,39 @@ const JSON_SHAPE = `{
       "difficulty": "beginner|intermediate|advanced",
       "legalityCheck": "verified|regional-restrictions|verify-locally",
       "scamSafeScore": 0,
-      "applySteps": ["step1", "step2", "step3"],
+      "applySteps": ["step1", "step2"],
       "requiredSkills": ["skill1"],
-      "sourceUrl": "https://example.com",
+      "sourceUrl": "https://platform-homepage.com",
       "sourceName": "string"
     }
   ],
   "scanMode": "web_search|fallback",
   "userEarningPotential": "string",
   "profileSummary": "string",
-  "tips": ["tip1", "tip2", "tip3"]
+  "tips": ["tip1", "tip2"]
 }`;
 
 function systemPrompt(liveSearch) {
   return (
     `You are RJSS — LifeOS Real-Time Global Job Signal Scanner. Today is ${todayStr()}.\n` +
-    `You scan global job portals, freelancing platforms, gig economy, and local opportunities ` +
-    `to find real earning options matched to the user's profile.\n` +
+    `Scan global job portals, freelancing platforms, gig economy, and local opportunities ` +
+    `to find REAL, immediately actionable earning options matched to the user's profile.\n` +
     (liveSearch
-      ? "You have live web access. Use it to find current, real job signals from Fiverr, Upwork, Appen, " +
-        "LinkedIn, Indeed, Internshala, Remote.co, Flex Jobs, Amazon Mechanical Turk, and local boards.\n"
-      : "You are using training knowledge. Share the best-matched opportunities you know and note currency may vary.\n") +
-    `CRITICAL: Return ONLY strict JSON matching this exact shape. No markdown, no explanations outside JSON:\n${JSON_SHAPE}\n` +
+      ? "You have live web access. Search for current, real job postings on Fiverr, Upwork, Appen, " +
+        "LinkedIn Jobs, Indeed, Internshala, Remote.co, FlexJobs, Amazon Mechanical Turk, Naukri, " +
+        "and relevant local boards. Find actual open listings with real apply links.\n"
+      : "Use your training knowledge. Return the best-matched real platforms and role types; note earnings may vary.\n") +
+    `CRITICAL: Return ONLY strict JSON matching the shape below. No markdown, no text outside JSON.\n${JSON_SHAPE}\n` +
     `Rules:\n` +
     `- Return exactly 5 jobs ranked by match quality\n` +
-    `- scamSafeScore: 0-100 (100 = verified safe, <60 = do not include)\n` +
-    `- All sourceUrls must be real, verifiable URLs\n` +
-    `- Earnings must be calibrated to user's location/currency\n` +
-    `- Filter out any opportunity with scamSafeScore < 60\n` +
-    `- studentFriendly jobs when student=true\n` +
+    `- location: real city/region where the job is available, or 'Remote / Global'\n` +
+    `- salaryRange: real salary or hourly rate if findable; otherwise 'varies'\n` +
+    `- experienceRequired: honest entry barrier — 'none' for zero-experience roles\n` +
+    `- officialLink: deep link to the actual job posting or platform apply page (NOT homepage); empty string if unavailable\n` +
+    `- scamSafeScore: 0–100 (100 = verified safe). Exclude any job scoring below 60.\n` +
+    `- Calibrate ALL earnings to the user's location and currency\n` +
+    `- Prioritise student-friendly roles when student=true\n` +
+    `- applySteps: max 3 concise steps\n` +
     `- STRICT JSON ONLY. No text before or after the JSON object.`
   );
 }
@@ -63,20 +105,20 @@ function systemPrompt(liveSearch) {
 function userPrompt(profile) {
   const { age, gender, student, skills, interests, location, hoursPerDay, currency } = profile;
   return (
-    `SCAN TARGET PROFILE:\n` +
+    `PROFILE:\n` +
     `• Age: ${age || "not specified"}\n` +
     `• Gender: ${gender || "not specified"}\n` +
     `• Student: ${student ? "Yes — prioritise student-friendly, internship, micro-task, part-time" : "No"}\n` +
-    `• Skills: ${(skills || []).join(", ") || "general skills"}\n` +
-    `• Interests: ${(interests || []).join(", ") || "open to anything"}\n` +
+    `• Skills: ${(skills || []).join(", ") || "general"}\n` +
+    `• Interests: ${(interests || []).join(", ") || "open"}\n` +
     `• Location: ${location || "global / remote"}\n` +
-    `• Available hours/day: ${hoursPerDay || 4}\n` +
-    `• Preferred currency: ${currency || "auto-detect from location"}\n\n` +
-    `SCAN SOURCES: Fiverr, Upwork, Freelancer, Appen, Scale AI, Amazon Mechanical Turk, ` +
-    `Remotasks, Internshala, LinkedIn Jobs, Indeed, Remote.co, FlexJobs, Toptal, 99designs, ` +
+    `• Hours/day: ${hoursPerDay || 4}\n` +
+    `• Currency: ${currency || "auto-detect from location"}\n\n` +
+    `SOURCES TO SEARCH: Fiverr, Upwork, Freelancer, Appen, Scale AI, Amazon Mechanical Turk, ` +
+    `Remotasks, Internshala, LinkedIn Jobs, Indeed, Naukri, Remote.co, FlexJobs, Toptal, 99designs, ` +
     `local job boards for ${location || "global"}.\n\n` +
-    `TASK: Find the top 5 real, verified, immediately actionable earning opportunities for this exact profile. ` +
-    `Match skills precisely, estimate earnings in the user's local currency, explain why each job fits their profile. ` +
+    `TASK: Find 5 real, verified, immediately actionable earning opportunities for this profile. ` +
+    `Include real location, salary/rate, experience needed, and a direct apply link where possible. ` +
     `Return strict JSON only.`
   );
 }
@@ -107,9 +149,16 @@ export async function scanJobs(req, res, next) {
       });
     }
 
+    // ── Cache hit — return instantly ─────────────────────────────────────────
+    const cached = getCache(profile);
+    if (cached) {
+      console.log("[rjss] cache hit — returning in <1ms");
+      return res.json({ ...cached, cached: true });
+    }
+
     const prompt = userPrompt(profile);
 
-    // ── Path 1: Responses API with live web search ──────────────────────────
+    // ── Path 1: Responses API with live web search ───────────────────────────
     let scanMode = "web_search";
     try {
       const result = await tryAI(() =>
@@ -136,6 +185,7 @@ export async function scanJobs(req, res, next) {
         const parsed = safeJSON(text);
         if (parsed?.jobs?.length) {
           parsed.scanMode = "web_search";
+          setCache(profile, parsed);
           return res.json(parsed);
         }
       }
@@ -150,7 +200,7 @@ export async function scanJobs(req, res, next) {
       openai.chat.completions.create({
         model:       CHAT_MODEL,
         max_tokens:  2000,
-        temperature: 0.4,
+        temperature: 0.3,
         messages: [
           { role: "system", content: systemPrompt(false) },
           { role: "user",   content: prompt },
@@ -163,6 +213,7 @@ export async function scanJobs(req, res, next) {
 
     if (parsed?.jobs?.length) {
       parsed.scanMode = scanMode;
+      setCache(profile, parsed);
       return res.json(parsed);
     }
 

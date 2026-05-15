@@ -260,6 +260,55 @@ export async function googleSignIn(req, res) {
 
 export const demoGoogleLogin = googleSignIn;
 
+/* ── POST /api/auth/google-onetap ────────────────────────────────────────── */
+/**
+ * Verifies a Google One-Tap / Sign-In-With-Google credential token,
+ * then upserts the user — same logic as googleSignIn.
+ */
+export async function googleOneTapSignIn(req, res) {
+  try {
+    const { credential } = req.body || {};
+    if (!credential || typeof credential !== "string") {
+      return res.status(400).json({ error: "credential is required" });
+    }
+
+    // Verify with Google's public tokeninfo endpoint (Node 20+ has native fetch)
+    let payload;
+    try {
+      const r = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`,
+        { signal: AbortSignal.timeout(8000) }
+      );
+      payload = await r.json();
+    } catch (fetchErr) {
+      console.error("[auth.googleOneTap] tokeninfo failed:", fetchErr.message);
+      return res.status(502).json({ error: "Could not verify Google token — network error" });
+    }
+
+    if (payload.error_description || payload.error) {
+      return res.status(401).json({ error: `Invalid Google credential: ${payload.error_description || payload.error}` });
+    }
+
+    // Optional: verify audience matches our registered client
+    const expectedClientId = process.env.GOOGLE_CLIENT_ID;
+    if (expectedClientId && payload.aud !== expectedClientId) {
+      return res.status(401).json({ error: "Token audience mismatch" });
+    }
+
+    const email    = String(payload.email        || "").toLowerCase().trim();
+    const rawName  = String(payload.name         || payload.given_name || "").trim();
+    const photoUrl = String(payload.picture      || "").trim() || null;
+
+    if (!email) return res.status(401).json({ error: "Google token has no email claim" });
+
+    // Delegate to the existing googleSignIn upsert logic
+    return googleSignIn({ ...req, body: { email, name: rawName, photoUrl } }, res);
+  } catch (err) {
+    console.error("[auth.googleOneTap]", err.message);
+    return res.status(500).json({ error: err.message });
+  }
+}
+
 /* ── GET /api/auth/me ───────────────────────────────────────────────────── */
 export async function me(req, res) {
   try {

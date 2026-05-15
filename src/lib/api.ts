@@ -148,6 +148,12 @@ export const auth = {
       user: { id: string; name?: string; email: string; photoUrl?: string; bio?: Record<string, unknown>; tier: string };
       notice?: string;
     }>("/api/auth/google", json(body), { auth: false }),
+  /** Real Google One-Tap / Sign-In-With-Google: sends the credential token for server-side verification */
+  googleOneTap: (body: { credential: string }) =>
+    request<{
+      token: string;
+      user: { id: string; name?: string; email: string; photoUrl?: string; tier: string };
+    }>("/api/auth/google-onetap", json(body), { auth: false }),
   me: () => request<{ user: unknown }>("/api/auth/me"),
 };
 
@@ -405,6 +411,10 @@ export interface RjssJob {
   title: string;
   type: "online" | "offline" | "hybrid";
   platform: string;
+  location: string;
+  salaryRange: string;
+  experienceRequired: string;
+  officialLink: string;
   estimatedEarnings: { hourly: string; daily: string; weekly: string; monthly: string };
   whyItMatches: string;
   difficulty: "beginner" | "intermediate" | "advanced";

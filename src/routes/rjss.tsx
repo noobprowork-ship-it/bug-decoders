@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { Shell } from "@/components/aurora/Shell";
 import { GlowCard, PageHeader, NeonButton } from "@/components/aurora/ui";
 import {
@@ -7,6 +7,7 @@ import {
   Zap, MapPin, Clock, TrendingUp, ExternalLink, ChevronDown, ChevronUp,
   Wifi, WifiOff, BadgeCheck, Star, Briefcase, Bookmark, BookmarkCheck,
   Trash2, CheckCircle2, XCircle, MessageSquare, ChevronRight,
+  DollarSign, GraduationCap, Link,
 } from "lucide-react";
 import { rjss, type RjssJob, type RjssScanResult, type RjssProfile } from "@/lib/api";
 import { trackAction } from "@/lib/activityTracker";
@@ -139,7 +140,7 @@ function legalityBadge(check: string) {
 
 // ── JobCard ───────────────────────────────────────────────────────────────────
 
-function JobCard({
+const JobCard = memo(function JobCard({
   job, index, onSave, saved,
 }: {
   job: RjssJob;
@@ -151,6 +152,10 @@ function JobCard({
   const scam     = scamBadge(job.scamSafeScore);
   const ScamIcon = scam.icon;
   const legality = legalityBadge(job.legalityCheck);
+
+  const applyUrl = (job.officialLink && job.officialLink !== "" && !job.officialLink.startsWith("https://direct"))
+    ? job.officialLink
+    : (job.sourceUrl && job.sourceUrl !== "https://example.com" ? job.sourceUrl : null);
 
   return (
     <GlowCard glow={index === 0 ? "blue" : index === 1 ? "purple" : "pink"} className="mb-4">
@@ -170,6 +175,25 @@ function JobCard({
                 <span className={`text-[10px] flex items-center gap-0.5 ${scam.cls}`}>
                   <ScamIcon className="h-3 w-3" /> {scam.label}
                 </span>
+              </div>
+
+              {/* Location + salary + experience row */}
+              <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                {job.location && (
+                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <MapPin className="h-3 w-3" /> {job.location}
+                  </span>
+                )}
+                {job.salaryRange && job.salaryRange !== "varies" && (
+                  <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
+                    <DollarSign className="h-3 w-3" /> {job.salaryRange}
+                  </span>
+                )}
+                {job.experienceRequired && (
+                  <span className="flex items-center gap-1 text-[10px] text-sky-400">
+                    <GraduationCap className="h-3 w-3" /> {job.experienceRequired}
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -219,6 +243,21 @@ function JobCard({
             ))}
           </div>
 
+          {/* Apply button (prominent) */}
+          {applyUrl && (
+            <a
+              href={applyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackAction("rjss_apply_click")}
+              className="mt-3 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-aurora/20 border border-primary/30 text-primary text-[11px] font-medium hover:bg-aurora/30 transition-all"
+            >
+              <Link className="h-3 w-3" />
+              Apply on {job.sourceName || "platform"}
+              <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+            </a>
+          )}
+
           <button
             onClick={() => setExpanded((v) => !v)}
             className="mt-3 flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
@@ -238,29 +277,17 @@ function JobCard({
                   <p className="text-sm text-muted-foreground leading-relaxed">{step}</p>
                 </div>
               ))}
-              {job.sourceUrl && job.sourceUrl !== "https://example.com" && (
-                <a
-                  href={job.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 mt-2 text-[11px] text-primary hover:underline"
-                  onClick={() => trackAction("rjss_apply_click")}
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  Visit {job.sourceName || "platform"}
-                </a>
-              )}
             </div>
           )}
         </div>
       </div>
     </GlowCard>
   );
-}
+});
 
 // ── SavedJobCard ──────────────────────────────────────────────────────────────
 
-function SavedJobCard({
+const SavedJobCard = memo(function SavedJobCard({
   entry, onUpdateStatus, onRemove,
 }: {
   entry: SavedJobEntry;
@@ -374,11 +401,11 @@ function SavedJobCard({
       </div>
     </GlowCard>
   );
-}
+});
 
 // ── TagToggle ─────────────────────────────────────────────────────────────────
 
-function TagToggle({
+const TagToggle = memo(function TagToggle({
   items, selected, onToggle,
 }: { items: string[]; selected: string[]; onToggle: (v: string) => void }) {
   return (
@@ -398,7 +425,7 @@ function TagToggle({
       ))}
     </div>
   );
-}
+});
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 

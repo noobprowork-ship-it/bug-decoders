@@ -61,6 +61,8 @@ function RootShell({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+        {/* Google Identity Services — loaded async so it never blocks rendering */}
+        <script src="https://accounts.google.com/gsi/client" async={true} defer={true} />
       </head>
       <body>
         {children}
