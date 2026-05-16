@@ -13,15 +13,17 @@ import { VoiceSettings } from "./VoiceSettings";
 type Msg = { role: "user" | "assistant"; content: string };
 
 const PAGE_HINTS: Record<string, string> = {
-  "/": "Welcome to LifeOS. Sign in with Google or Email, or skip straight to the dashboard.",
-  "/dashboard": "This is your home base. Open a module like GOIE, Multiverse, Cinematic, or Mind to start.",
+  "/": "Welcome to LifeOS. Sign in with Google or create an account to get started.",
+  "/dashboard": "This is your home base. Open a module like GOIE, Multiverse, Mind, or Community to start.",
   "/goie": "GOIE generates real-world opportunities with sources. Add interests/skills, then tap Generate opportunities.",
   "/multiverse": "Type a decision and I'll branch out alternate futures with milestones, risks and wins.",
-  "/cinematic": "Describe a theme and I'll direct a cinematic with images for each scene.",
   "/mind": "Pour out your thoughts in Decode, or answer questions in Universe — I'll build a mind map.",
   "/voice": "This is the full-screen voice companion — ask me anything, I'll stream a reply.",
   "/explore": "Explore shows your behavior patterns and hidden skills. Try generating a report!",
   "/profile": "This is your Profile. Fill in your skills, bio, and links — then hit Career AI for personalised job and career recommendations!",
+  "/people": "Find your tribe! Add your interests and skills on the left, and I'll match you to the best online communities.",
+  "/rjss": "Job Search — add your skills and let AI find the best matching opportunities for you.",
+  "/courses": "Courses & Internships — search for free courses and real internship opportunities.",
 };
 
 const WELCOME =
@@ -154,17 +156,34 @@ export function AssistantBot() {
     setMessages((m) => [...m, { role: "assistant", content: "" }]);
     try {
       const resp = await news.ask({ query: q });
-      const sourcesLine = resp.sources?.length
-        ? "\n\nSources: " + resp.sources.slice(0, 3).map((s) => `[${s.title}](${s.url})`).join(" · ")
-        : "";
-      const noticeLine = resp.notice ? `\n\n_${resp.notice}_` : "";
-      const full = (resp.answer || "I couldn't find anything live right now.") + sourcesLine + noticeLine;
+
+      let full = "";
+
+      // New structured format
+      if (resp.articles?.length) {
+        const header = resp.headline ? `**${resp.headline}**\n\n` : "";
+        const summary = resp.summary ? `${resp.summary}\n\n` : "";
+        const articleLines = resp.articles.slice(0, 5).map((a, i) =>
+          `**${i + 1}. ${a.title}** _(${a.source} · ${a.publishedAt})_\n${a.description}${a.sourceUrl ? `\n[Read more →](${a.sourceUrl})` : ""}`
+        ).join("\n\n");
+        const notice = resp.notice ? `\n\n_${resp.notice}_` : "";
+        full = header + summary + articleLines + notice;
+      } else {
+        // Legacy plain-text format fallback
+        const sourcesLine = resp.sources?.length
+          ? "\n\nSources: " + resp.sources.slice(0, 3).map((s) => `[${s.title}](${s.url})`).join(" · ")
+          : "";
+        const noticeLine = resp.notice ? `\n\n_${resp.notice}_` : "";
+        full = (resp.answer || "I couldn't find anything live right now.") + sourcesLine + noticeLine;
+      }
+
       setMessages((m) => {
         if (!m.length) return m;
         const last = { ...m[m.length - 1], content: full };
         return [...m.slice(0, -1), last];
       });
-      if (voiceOnRef.current) speak(resp.answer);
+      const speakText = resp.summary || resp.answer || "";
+      if (voiceOnRef.current && speakText) speak(speakText);
     } catch (e) {
       setMessages((m) => {
         if (!m.length) return m;

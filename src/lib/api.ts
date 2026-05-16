@@ -158,9 +158,29 @@ export const auth = {
 };
 
 // ---------------- Current affairs / news ----------------
+export type NewsArticle = {
+  title: string;
+  description: string;
+  source: string;
+  sourceUrl: string;
+  category: string;
+  publishedAt: string;
+  imageUrl: string;
+  keywords: string[];
+};
+
 export const news = {
   ask: (body: { query: string; topic?: string }) =>
-    request<{ answer: string; sources: { title: string; url: string }[]; mode: string; notice?: string }>(
+    request<{
+      headline?: string;
+      summary?: string;
+      articles?: NewsArticle[];
+      answer?: string;
+      sources?: { title: string; url: string }[];
+      mode: string;
+      date: string;
+      notice?: string;
+    }>(
       "/api/news",
       json(body)
     ),

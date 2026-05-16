@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Sparkles, Mail, ArrowRight, Brain, Globe2, GitBranch, Clapperboard } from "lucide-react";
+import { Sparkles, Mail, ArrowRight, Brain, Globe2, GitBranch, Users } from "lucide-react";
 import { LoginModal, type LoginMode } from "@/components/aurora/LoginModal";
 
 export const Route = createFileRoute("/")({
@@ -35,9 +35,12 @@ function Landing() {
               <div className="text-[10px] text-muted-foreground tracking-[0.3em] -mt-1">YOUR LIFE, OPERATED</div>
             </div>
           </div>
-          <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition">
-            Skip to dashboard →
-          </Link>
+          <button
+            onClick={() => setModal("signin")}
+            className="text-sm text-muted-foreground hover:text-foreground transition"
+          >
+            Sign in
+          </button>
         </nav>
 
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -123,7 +126,7 @@ function Landing() {
             </div>
 
             <div className="mt-6 flex flex-wrap gap-2 justify-center">
-              {[Clapperboard, Brain, Globe2].map((Icon, i) => (
+              {[Brain, Globe2, GitBranch, Users].map((Icon, i) => (
                 <div key={i} className="h-9 w-9 rounded-xl glass flex items-center justify-center">
                   <Icon className="h-4 w-4 text-muted-foreground" />
                 </div>

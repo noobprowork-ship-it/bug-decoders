@@ -1,14 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState, useCallback } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Shell } from "@/components/aurora/Shell";
 import { GlowCard, PageHeader, NeonButton } from "@/components/aurora/ui";
 import {
   User, Save, Loader2, Sparkles, Briefcase, TrendingUp,
   BookOpen, Linkedin, Github, Link2, Plus, X, AlertTriangle,
-  CheckCircle2, Rocket, Target, Brain,
+  CheckCircle2, Rocket, Brain, LogOut, Camera, Target,
 } from "lucide-react";
-import { getToken } from "@/lib/api";
-import { getStoredUser, setStoredUser } from "@/lib/user";
+import { getToken, setToken } from "@/lib/api";
+import { getStoredUser, setStoredUser, clearStoredUser } from "@/lib/user";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "Profile — LifeOS" }] }),
@@ -146,10 +146,13 @@ function CustomLinksInput({
 
 /* ── Main component ───────────────────────────────────────────────────────── */
 function Profile() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<"profile" | "career">("profile");
   const [saving, setSaving]   = useState(false);
   const [saved, setSaved]     = useState(false);
   const [saveErr, setSaveErr] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [careerLoading, setCareerLoading] = useState(false);
   const [careerErr, setCareerErr]         = useState<string | null>(null);
@@ -196,6 +199,28 @@ function Profile() {
       })
       .catch(() => {});
   }, []);
+
+  function handlePhotoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { setSaveErr("Photo must be under 5 MB."); return; }
+    setPhotoUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPhotoUrl(reader.result as string);
+      setPhotoUploading(false);
+    };
+    reader.onerror = () => { setSaveErr("Failed to read photo."); setPhotoUploading(false); };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  function logout() {
+    setToken(null);
+    clearStoredUser();
+    window.localStorage.removeItem("lifeos.voice.enabled");
+    navigate({ to: "/" });
+  }
 
   const profilePayload = useCallback(() => ({
     name, photoUrl, about, age: age ? Number(age) : null,
@@ -285,6 +310,14 @@ function Profile() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Left: avatar + quick info */}
           <GlowCard glow="blue" className="flex flex-col items-center text-center gap-4">
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoFile}
+            />
             <div className="relative">
               {photoUrl ? (
                 <img src={photoUrl} alt={name} className="h-24 w-24 rounded-full object-cover ring-2 ring-primary/40" />
@@ -293,6 +326,16 @@ function Profile() {
                   {(name || email || "U").slice(0, 1).toUpperCase()}
                 </div>
               )}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={photoUploading}
+                className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-aurora border-2 border-background flex items-center justify-center hover:scale-110 transition shadow-neon"
+                title="Upload photo"
+              >
+                {photoUploading
+                  ? <Loader2 className="h-3.5 w-3.5 text-primary-foreground animate-spin" />
+                  : <Camera className="h-3.5 w-3.5 text-primary-foreground" />}
+              </button>
             </div>
             <div>
               <div className="font-display font-bold text-lg">{name || "Your Name"}</div>
@@ -411,6 +454,13 @@ function Profile() {
                 <Sparkles className="h-4 w-4 text-primary" /> Career AI
               </button>
             </div>
+
+            <button
+              onClick={logout}
+              className="flex items-center justify-center gap-2 w-full glass rounded-2xl px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 border border-red-500/20 transition"
+            >
+              <LogOut className="h-4 w-4" /> Sign out of LifeOS
+            </button>
           </div>
         </div>
       )}

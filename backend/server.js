@@ -38,6 +38,7 @@ import sessionsRoutes from "./src/routes/sessions.js";
 import pushRoutes from "./src/routes/push.js";
 import profileRoutes from "./src/routes/profile.js";
 import rjssRoutes from "./src/routes/rjss.js";
+import peopleRoutes from "./src/routes/people.js";
 import { sendWeeklyInsights, shouldSendWeekly } from "./src/controllers/pushController.js";
 
 const app = express();
@@ -86,6 +87,7 @@ app.use("/api/sessions", sessionsRoutes);
 app.use("/api/notifications", pushRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/rjss", rjssRoutes);
+app.use("/api/people", peopleRoutes);
 
 const CLIENT_DIST = path.resolve(__dirname, "..", "dist", "client");
 const SERVER_DIST = path.resolve(__dirname, "..", "dist", "server");

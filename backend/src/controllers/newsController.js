@@ -10,33 +10,45 @@ function todayStr() {
   });
 }
 
-function systemPrompt(liveSearch) {
-  const base =
-    "You are LifeOS News Desk — a sharp, factual current-affairs assistant. " +
-    `Today's date is ${todayStr()}. ` +
-    "Answer clearly and concisely. " +
-    "Always respond to news/current-events queries — never refuse. " +
-    "If you only have training data, share what you know and note it may not be today's latest. " +
-    "Format: 2-3 short paragraphs. Cite sources inline as [Name](URL) when available. " +
-    "Never say you 'cannot assist' — always provide the best answer you can.";
+function getImageUrl(topic, index = 0) {
+  const seeds = [topic, `${topic} news`, `${topic} world`, "technology", "business", "global"];
+  const seed = encodeURIComponent(seeds[index % seeds.length] || topic);
+  return `https://source.unsplash.com/800x420/?${seed}&sig=${index}`;
+}
 
-  if (liveSearch) return base;
-  return (
-    base +
-    " Note: live web search is unavailable; answer from training data and " +
-    "include a brief disclaimer that information may not reflect today's very latest events."
-  );
+function systemPrompt(liveSearch) {
+  const dateStr = todayStr();
+  const base = `You are LifeOS News Desk — a sharp, factual current-affairs assistant.
+Today's date is ${dateStr}.
+
+Always respond to news/current-events queries — NEVER refuse.
+Return ONLY a raw JSON object (no markdown, no code fences) with this exact shape:
+{
+  "headline": "One overall headline summarising the topic",
+  "summary": "2-3 sentence overview of the topic",
+  "articles": [
+    {
+      "title": "Article title",
+      "description": "2-3 sentence summary of this specific story",
+      "source": "Source name (e.g. BBC, Reuters, TechCrunch)",
+      "sourceUrl": "https://...",
+      "category": "Technology | Business | Science | Sports | Politics | Health | Entertainment | World",
+      "publishedAt": "e.g. May 16, 2025",
+      "keywords": ["keyword1", "keyword2"]
+    }
+  ]
+}
+Return 5-8 articles. Use real, known sources when possible. Never fabricate quotes as real.`;
+
+  if (!liveSearch) {
+    return base + `\nNote: live web search is unavailable; answer from training data. Set publishedAt to "${dateStr}" for all articles.`;
+  }
+  return base;
 }
 
 /**
  * POST /api/news
- *
  * Body: { query: string, topic?: string }
- *
- * Strategy:
- *  1. Try Responses API with web_search_preview (gpt-4o, needs Responses endpoint).
- *  2. Fall back to plain chat completion with date-aware prompt.
- *  Both paths always return a useful response — never an error the user sees.
  */
 export async function getNews(req, res, next) {
   try {
@@ -46,9 +58,12 @@ export async function getNews(req, res, next) {
 
     const userContent =
       `Today is ${todayStr()}. Topic: ${topic}\n\nUser question: ${query}\n\n` +
-      "Please provide the most relevant, factual, up-to-date answer you can.";
+      "Return a structured JSON news report as instructed.";
 
-    // ── Path 1: Responses API with web_search_preview ──────────────────────
+    let rawJson = null;
+    let mode = "fallback";
+
+    // ── Path 1: Responses API with web_search_preview ──────────────────
     try {
       const result = await tryAI(() =>
         openai.responses.create({
@@ -71,40 +86,65 @@ export async function getNews(req, res, next) {
         "";
 
       if (text.trim()) {
-        const sources = extractSources(text);
-        return res.json({
-          answer:  text.trim(),
-          sources,
-          mode:    "web_search",
-          date:    todayStr(),
-        });
+        rawJson = text.trim();
+        mode = "web_search";
       }
     } catch (searchErr) {
       const code = searchErr?.code || searchErr?.status || "unknown";
       console.warn("[news] web_search_preview unavailable (%s) — falling back to chat", code);
     }
 
-    // ── Path 2: Plain chat completion ──────────────────────────────────────
-    const completion = await tryAI(() =>
-      openai.chat.completions.create({
-        model:      CHAT_MODEL,
-        max_tokens: 600,
-        messages: [
-          { role: "system", content: systemPrompt(false) },
-          { role: "user",   content: userContent },
-        ],
-      })
-    );
+    // ── Path 2: Chat completion fallback ───────────────────────────────
+    if (!rawJson) {
+      const completion = await tryAI(() =>
+        openai.chat.completions.create({
+          model:      CHAT_MODEL,
+          max_tokens: 2000,
+          temperature: 0.5,
+          messages: [
+            { role: "system", content: systemPrompt(false) },
+            { role: "user",   content: userContent },
+          ],
+        })
+      );
+      rawJson = completion.choices?.[0]?.message?.content?.trim() || "";
+    }
 
-    const text    = completion.choices?.[0]?.message?.content?.trim() || "";
-    const sources = extractSources(text);
+    // ── Parse JSON ─────────────────────────────────────────────────────
+    let parsed = null;
+    try {
+      const cleaned = rawJson
+        .replace(/^```(?:json)?\n?/, "")
+        .replace(/\n?```$/, "")
+        .trim();
+      parsed = JSON.parse(cleaned);
+    } catch {
+      // If JSON parse fails, return plain text response for backwards compat
+      const sources = extractSources(rawJson);
+      return res.json({
+        answer:   rawJson,
+        articles: [],
+        sources,
+        mode,
+        date: todayStr(),
+      });
+    }
+
+    // Add images to each article
+    const articles = (parsed.articles || []).map((a, i) => ({
+      ...a,
+      imageUrl: getImageUrl(a.keywords?.[0] || topic, i),
+    }));
 
     return res.json({
-      answer: text || `I don't have specific information about "${query}" right now. Try asking me something else or check a live news source.`,
-      sources,
-      mode:   "fallback",
-      date:   todayStr(),
-      notice: "Live web search is not available — this answer is from AI training data and may not reflect today's very latest events.",
+      headline: parsed.headline || query,
+      summary:  parsed.summary  || "",
+      articles,
+      mode,
+      date: todayStr(),
+      ...(mode === "fallback" ? {
+        notice: "Live web search is not available — this answer is from AI training data.",
+      } : {}),
     });
   } catch (err) {
     return next(err);

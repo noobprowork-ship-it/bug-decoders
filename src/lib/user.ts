@@ -42,3 +42,9 @@ export function setStoredUser(user: StoredUser | null) {
     window.dispatchEvent(new CustomEvent("lifeos:user", { detail: user }));
   }
 }
+
+export function clearStoredUser() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(KEY);
+  window.dispatchEvent(new CustomEvent("lifeos:user", { detail: null }));
+}
