@@ -13,6 +13,7 @@ import { Route as VoiceRouteImport } from './routes/voice'
 import { Route as RjssRouteImport } from './routes/rjss'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PeopleRouteImport } from './routes/people'
+import { Route as NewsRouteImport } from './routes/news'
 import { Route as MultiverseRouteImport } from './routes/multiverse'
 import { Route as MindRouteImport } from './routes/mind'
 import { Route as GoieRouteImport } from './routes/goie'
@@ -40,6 +41,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const PeopleRoute = PeopleRouteImport.update({
   id: '/people',
   path: '/people',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewsRoute = NewsRouteImport.update({
+  id: '/news',
+  path: '/news',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MultiverseRoute = MultiverseRouteImport.update({
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/goie': typeof GoieRoute
   '/mind': typeof MindRoute
   '/multiverse': typeof MultiverseRoute
+  '/news': typeof NewsRoute
   '/people': typeof PeopleRoute
   '/profile': typeof ProfileRoute
   '/rjss': typeof RjssRoute
@@ -106,6 +113,7 @@ export interface FileRoutesByTo {
   '/goie': typeof GoieRoute
   '/mind': typeof MindRoute
   '/multiverse': typeof MultiverseRoute
+  '/news': typeof NewsRoute
   '/people': typeof PeopleRoute
   '/profile': typeof ProfileRoute
   '/rjss': typeof RjssRoute
@@ -121,6 +129,7 @@ export interface FileRoutesById {
   '/goie': typeof GoieRoute
   '/mind': typeof MindRoute
   '/multiverse': typeof MultiverseRoute
+  '/news': typeof NewsRoute
   '/people': typeof PeopleRoute
   '/profile': typeof ProfileRoute
   '/rjss': typeof RjssRoute
@@ -137,6 +146,7 @@ export interface FileRouteTypes {
     | '/goie'
     | '/mind'
     | '/multiverse'
+    | '/news'
     | '/people'
     | '/profile'
     | '/rjss'
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/goie'
     | '/mind'
     | '/multiverse'
+    | '/news'
     | '/people'
     | '/profile'
     | '/rjss'
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/goie'
     | '/mind'
     | '/multiverse'
+    | '/news'
     | '/people'
     | '/profile'
     | '/rjss'
@@ -180,6 +192,7 @@ export interface RootRouteChildren {
   GoieRoute: typeof GoieRoute
   MindRoute: typeof MindRoute
   MultiverseRoute: typeof MultiverseRoute
+  NewsRoute: typeof NewsRoute
   PeopleRoute: typeof PeopleRoute
   ProfileRoute: typeof ProfileRoute
   RjssRoute: typeof RjssRoute
@@ -214,6 +227,13 @@ declare module '@tanstack/react-router' {
       path: '/people'
       fullPath: '/people'
       preLoaderRoute: typeof PeopleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/news': {
+      id: '/news'
+      path: '/news'
+      fullPath: '/news'
+      preLoaderRoute: typeof NewsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/multiverse': {
@@ -284,6 +304,7 @@ const rootRouteChildren: RootRouteChildren = {
   GoieRoute: GoieRoute,
   MindRoute: MindRoute,
   MultiverseRoute: MultiverseRoute,
+  NewsRoute: NewsRoute,
   PeopleRoute: PeopleRoute,
   ProfileRoute: ProfileRoute,
   RjssRoute: RjssRoute,

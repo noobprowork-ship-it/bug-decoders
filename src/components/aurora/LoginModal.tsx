@@ -349,10 +349,6 @@ function EmailSignInFallback({
         </div>
       </div>
 
-      <div className="text-xs text-amber-400/80 glass rounded-xl p-2.5 mb-4 leading-relaxed">
-        Google One-Tap is not yet configured. Email sign-in is active as fallback.
-      </div>
-
       <form onSubmit={submit} className="space-y-3">
         <Field type="email" label="Email" placeholder="you@example.com"
           value={email} onChange={setEmail} autoComplete="email" />

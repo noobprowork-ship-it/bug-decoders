@@ -21,6 +21,7 @@ const PAGE_HINTS: Record<string, string> = {
   "/voice": "This is the full-screen voice companion — ask me anything, I'll stream a reply.",
   "/explore": "Explore shows your behavior patterns and hidden skills. Try generating a report!",
   "/profile": "This is your Profile. Fill in your skills, bio, and links — then hit Career AI for personalised job and career recommendations!",
+  "/news": "This is the News feed — pick a topic or search anything. I pull live stories with images, summaries, and source links.",
   "/people": "Find your tribe! Add your interests and skills on the left, and I'll match you to the best online communities.",
   "/rjss": "Job Search — add your skills and let AI find the best matching opportunities for you.",
   "/courses": "Courses & Internships — search for free courses and real internship opportunities.",
