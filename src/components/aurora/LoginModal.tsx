@@ -1,20 +1,32 @@
 /**
  * LifeOS Login Modal
  *
- * Sign In:        Real Google One-Tap (Google Identity Services)
- *                 Falls back to email/password if VITE_GOOGLE_CLIENT_ID is not set.
- * Create Account: Email / password registration (unchanged).
+ * When VITE_GOOGLE_CLIENT_ID is set:
+ *   • Loads Google Identity Services (script already in __root.tsx)
+ *   • Triggers the One-Tap auto-prompt (auto_select: true) immediately —
+ *     the user is signed in with zero clicks if they have an active Google
+ *     session in the browser.
+ *   • Renders Google's branded button as a fallback if the prompt is dismissed.
+ *   • Offers email/password below as an "other account" path.
+ *
+ * When VITE_GOOGLE_CLIENT_ID is NOT set:
+ *   • Shows a clean email / password form with no Google references.
+ *   • Users never see a broken or half-configured Google button.
+ *
+ * Session persistence: the JWT is stored in localStorage ("aurora.token").
+ * On every app boot the Shell reads it and skips the modal entirely.
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   X, Mail, Loader2, AlertTriangle,
-  Sparkles, Linkedin, Github, Link2, Eye, EyeOff,
+  Sparkles, Eye, EyeOff, Lock, User as UserIcon,
+  Linkedin, Github, Link2,
 } from "lucide-react";
 import { auth, setToken } from "@/lib/api";
 import { setStoredUser } from "@/lib/user";
 
-/* ── Google Identity Services global type ──────────────────────────────── */
+/* ── Google Identity Services type shim ──────────────────────────────────── */
 declare global {
   interface Window {
     google?: {
@@ -26,13 +38,16 @@ declare global {
             auto_select?: boolean;
             cancel_on_tap_outside?: boolean;
             context?: string;
+            itp_support?: boolean;
           }): void;
           renderButton(parent: HTMLElement, cfg: object): void;
           prompt(cb?: (n: {
             isNotDisplayed(): boolean;
             isSkippedMoment(): boolean;
+            getMomentType(): string;
           }) => void): void;
           cancel(): void;
+          disableAutoSelect(): void;
         };
       };
     };
@@ -58,49 +73,24 @@ export function LoginModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md glass-strong rounded-3xl shadow-soft overflow-y-auto max-h-[90dvh]"
+        className="relative w-full max-w-[420px] glass-strong rounded-3xl shadow-soft overflow-y-auto max-h-[90dvh]"
         onClick={(e) => e.stopPropagation()}
       >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 h-8 w-8 rounded-full glass flex items-center justify-center hover:bg-white/10 z-10"
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
         <div className="p-7">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 h-8 w-8 rounded-full glass flex items-center justify-center hover:bg-white/10 z-10"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
-
-          {/* Tab switcher */}
-          <div className="flex gap-2 mb-6 glass rounded-2xl p-1">
-            <button
-              onClick={() => setMode("signin")}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition ${
-                mode === "signin"
-                  ? "bg-aurora text-primary-foreground shadow-neon"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => setMode("signup")}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition ${
-                mode === "signup"
-                  ? "bg-aurora text-primary-foreground shadow-neon"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Create Account
-            </button>
-          </div>
-
-          {mode === "signin" && (
-            <GoogleSignInPanel
+          {mode === "signin" ? (
+            <SignInPanel
               onSuccess={onSuccess}
               onCreateAccount={() => setMode("signup")}
             />
-          )}
-          {mode === "signup" && (
+          ) : (
             <CreateAccountPanel
               onSuccess={onSuccess}
               onSignIn={() => setMode("signin")}
@@ -112,7 +102,7 @@ export function LoginModal({
   );
 }
 
-/* ── Shared helpers ─────────────────────────────────────────────────────── */
+/* ── Shared primitives ───────────────────────────────────────────────────── */
 
 function ErrMsg({ text }: { text: string }) {
   return (
@@ -136,16 +126,16 @@ function SubmitBtn({ loading, children }: { loading: boolean; children: React.Re
 }
 
 function Field({
-  type = "text", label, placeholder, value, onChange, autoComplete, icon: Icon, rows,
+  type = "text", label, placeholder, value, onChange, autoComplete, icon: Icon,
 }: {
   type?: string; label?: string; placeholder: string; value: string;
   onChange: (v: string) => void; autoComplete?: string;
-  icon?: React.ElementType; rows?: number;
+  icon?: React.ElementType;
 }) {
   const [show, setShow] = useState(false);
   const isPassword = type === "password";
   const inputType  = isPassword ? (show ? "text" : "password") : type;
-  const base = "w-full glass rounded-2xl p-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary";
+  const base = "w-full glass rounded-2xl px-3 py-3 text-sm bg-transparent outline-none focus:ring-1 focus:ring-primary transition";
 
   return (
     <div>
@@ -156,23 +146,18 @@ function Field({
             <Icon className="h-3.5 w-3.5" />
           </span>
         )}
-        {rows ? (
-          <textarea
-            placeholder={placeholder} value={value}
-            onChange={(e) => onChange(e.target.value)}
-            rows={rows}
-            className={`${base} resize-none ${Icon ? "pl-9" : ""}`}
-          />
-        ) : (
-          <input
-            type={inputType} placeholder={placeholder} value={value}
-            onChange={(e) => onChange(e.target.value)}
-            autoComplete={autoComplete}
-            className={`${base} ${Icon ? "pl-9" : ""} ${isPassword ? "pr-10" : ""}`}
-          />
-        )}
+        <input
+          type={inputType}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete={autoComplete}
+          className={`${base} ${Icon ? "pl-9" : ""} ${isPassword ? "pr-10" : ""}`}
+        />
         {isPassword && (
-          <button type="button" onClick={() => setShow((v) => !v)}
+          <button
+            type="button"
+            onClick={() => setShow((v) => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
             {show ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
@@ -184,7 +169,7 @@ function Field({
 }
 
 const GoogleLogo = () => (
-  <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
+  <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -192,19 +177,59 @@ const GoogleLogo = () => (
   </svg>
 );
 
-/* ── Google Sign-In Panel (One-Tap) ─────────────────────────────────────── */
-function GoogleSignInPanel({
-  onSuccess, onCreateAccount,
+const Divider = ({ label }: { label: string }) => (
+  <div className="flex items-center gap-3 my-4">
+    <div className="flex-1 h-px bg-border/60" />
+    <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">{label}</span>
+    <div className="flex-1 h-px bg-border/60" />
+  </div>
+);
+
+/* ── Sign-In Panel ───────────────────────────────────────────────────────── */
+function SignInPanel({
+  onSuccess,
+  onCreateAccount,
 }: { onSuccess: () => void; onCreateAccount: () => void }) {
-  const [status, setStatus] = useState<"idle" | "loading">("idle");
-  const [err, setErr]       = useState<string | null>(null);
-  const buttonRef           = useRef<HTMLDivElement>(null);
-  const clientId            = (import.meta as Record<string, unknown>).env
-    ? ((import.meta as Record<string, unknown>).env as Record<string, string>).VITE_GOOGLE_CLIENT_ID
-    : undefined;
+  const clientId: string | undefined = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID;
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex flex-col items-center text-center mb-7">
+        <div className="h-14 w-14 rounded-2xl bg-aurora flex items-center justify-center mb-4 shadow-neon">
+          <Sparkles className="h-7 w-7 text-primary-foreground" />
+        </div>
+        <h2 className="font-display text-2xl font-bold">Welcome back</h2>
+        <p className="text-sm text-muted-foreground mt-1">Sign in to continue to LifeOS</p>
+      </div>
+
+      {clientId ? (
+        <GoogleOneTapSignIn
+          clientId={clientId}
+          onSuccess={onSuccess}
+          onCreateAccount={onCreateAccount}
+        />
+      ) : (
+        <EmailSignIn onSuccess={onSuccess} onCreateAccount={onCreateAccount} />
+      )}
+    </div>
+  );
+}
+
+/* ── Google One-Tap (when VITE_GOOGLE_CLIENT_ID is configured) ───────────── */
+function GoogleOneTapSignIn({
+  clientId,
+  onSuccess,
+  onCreateAccount,
+}: { clientId: string; onSuccess: () => void; onCreateAccount: () => void }) {
+  const [gsiStatus, setGsiStatus]     = useState<"loading" | "ready" | "failed">("loading");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [showEmail, setShowEmail]     = useState(false);
+  const [err, setErr]                 = useState<string | null>(null);
+  const buttonRef                     = useRef<HTMLDivElement>(null);
 
   const handleCredential = useCallback(async (response: { credential: string }) => {
-    setStatus("loading");
+    setAuthLoading(true);
     setErr(null);
     try {
       const resp = await auth.googleOneTap({ credential: response.credential });
@@ -218,83 +243,106 @@ function GoogleSignInPanel({
       });
       onSuccess();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Sign-in failed. Please try again.");
-      setStatus("idle");
+      setErr(e instanceof Error ? e.message : "Google sign-in failed. Please try again.");
+      setAuthLoading(false);
     }
   }, [onSuccess]);
 
   useEffect(() => {
     if (!clientId) return;
 
-    let interval: ReturnType<typeof setInterval> | null = null;
+    let ticker: ReturnType<typeof setInterval> | undefined;
+    let tries = 0;
 
-    const init = () => {
+    const tryInit = () => {
+      tries++;
       const g = window.google?.accounts?.id;
-      if (!g) return false;
+      if (!g) {
+        if (tries > 40) { setGsiStatus("failed"); clearInterval(ticker); }
+        return;
+      }
+
+      clearInterval(ticker);
 
       g.initialize({
         client_id:             clientId,
         callback:              handleCredential,
-        auto_select:           false,
+        auto_select:           true,   // ← sign in automatically if only one Google account
         cancel_on_tap_outside: true,
         context:               "signin",
+        itp_support:           true,   // ← ITP support for Safari
       });
 
       if (buttonRef.current) {
         g.renderButton(buttonRef.current, {
-          theme:  "outline",
-          size:   "large",
-          text:   "continue_with",
-          shape:  "rectangular",
-          width:  380,
+          theme:          "outline",
+          size:           "large",
+          text:           "continue_with",
+          shape:          "rectangular",
+          width:          370,
           logo_alignment: "left",
         });
       }
 
-      // Trigger One-Tap prompt (may not show if already dismissed)
-      g.prompt();
-      return true;
+      setGsiStatus("ready");
+
+      // Fire the prompt — auto_select means it may resolve silently
+      g.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          // One-Tap was suppressed — the rendered button below still works
+        }
+      });
     };
 
-    if (!init()) {
-      interval = setInterval(() => {
-        if (init()) { clearInterval(interval!); interval = null; }
-      }, 150);
-    }
-
-    return () => { if (interval) clearInterval(interval); };
+    ticker = setInterval(tryInit, 150);
+    return () => clearInterval(ticker);
   }, [clientId, handleCredential]);
 
-  // ── Google not configured — graceful fallback to email sign-in ───────────
-  if (!clientId) {
-    return <EmailSignInFallback onSuccess={onSuccess} onCreateAccount={onCreateAccount} />;
+  if (authLoading) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-8 text-sm text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <span>Signing you in with Google…</span>
+      </div>
+    );
   }
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
-        <div className="h-11 w-11 rounded-2xl bg-aurora flex items-center justify-center">
-          <GoogleLogo />
-        </div>
-        <div>
-          <h2 className="font-display text-xl font-bold">Sign in with Google</h2>
-          <p className="text-xs text-muted-foreground">Choose your Google account to continue</p>
-        </div>
+      {/* Google branded button */}
+      <div className="min-h-[44px] flex items-center justify-center">
+        {gsiStatus === "loading" && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground py-3">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading Google sign-in…
+          </div>
+        )}
+        {gsiStatus === "failed" && (
+          <button
+            type="button"
+            onClick={() => setShowEmail(true)}
+            className="w-full glass border border-border/60 rounded-2xl py-3 px-4 flex items-center justify-center gap-3 text-sm font-medium hover:bg-white/5 transition"
+          >
+            <GoogleLogo /> Continue with Google
+          </button>
+        )}
+        <div ref={buttonRef} className={gsiStatus === "ready" ? "w-full" : "hidden"} />
       </div>
 
-      {/* Google renders its branded button into this div */}
-      <div
-        ref={buttonRef}
-        className="w-full min-h-[44px] flex items-center justify-center mb-4"
-      />
+      {err && <div className="mt-3"><ErrMsg text={err} /></div>}
 
-      {status === "loading" && (
-        <div className="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Signing you in…
-        </div>
+      <Divider label="or" />
+
+      {showEmail ? (
+        <EmailSignIn onSuccess={onSuccess} onCreateAccount={onCreateAccount} />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowEmail(true)}
+          className="w-full glass border border-border/40 rounded-2xl py-3 px-4 flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition"
+        >
+          <Mail className="h-4 w-4" /> Use email &amp; password
+        </button>
       )}
-
-      {err && <div className="mt-2"><ErrMsg text={err} /></div>}
 
       <p className="text-center text-xs text-muted-foreground mt-5">
         No account?{" "}
@@ -306,9 +354,10 @@ function GoogleSignInPanel({
   );
 }
 
-/* ── Email Sign-In Fallback (no Google Client ID configured) ────────────── */
-function EmailSignInFallback({
-  onSuccess, onCreateAccount,
+/* ── Email Sign-In (primary when no Google, secondary when Google is on) ─── */
+function EmailSignIn({
+  onSuccess,
+  onCreateAccount,
 }: { onSuccess: () => void; onCreateAccount: () => void }) {
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
@@ -325,54 +374,48 @@ function EmailSignInFallback({
       const resp = await auth.login({ email: email.trim(), password });
       setToken(resp.token);
       setStoredUser({
-        id:    (resp.user as { id?: string })?.id,
+        id:    (resp.user as any)?.id,
         email: resp.user?.email,
-        name:  (resp.user as { name?: string })?.name,
+        name:  (resp.user as any)?.name,
       });
       onSuccess();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Sign-in failed.");
+      setErr(e instanceof Error ? e.message : "Sign-in failed. Please check your credentials.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div>
-      <div className="flex items-center gap-3 mb-5">
-        <div className="h-11 w-11 rounded-2xl bg-aurora flex items-center justify-center">
-          <Mail className="h-5 w-5 text-primary-foreground" />
-        </div>
-        <div>
-          <h2 className="font-display text-xl font-bold">Sign in</h2>
-          <p className="text-xs text-muted-foreground">Use your LifeOS credentials</p>
-        </div>
-      </div>
-
-      <form onSubmit={submit} className="space-y-3">
-        <Field type="email" label="Email" placeholder="you@example.com"
-          value={email} onChange={setEmail} autoComplete="email" />
-        <Field type="password" label="Password" placeholder="••••••••"
-          value={password} onChange={setPassword} autoComplete="current-password" />
-        {err && <ErrMsg text={err} />}
-        <SubmitBtn loading={loading}>
-          <Sparkles className="h-4 w-4" /> Sign in
-        </SubmitBtn>
-      </form>
-
-      <p className="text-center text-xs text-muted-foreground mt-4">
+    <form onSubmit={submit} className="space-y-3">
+      <Field
+        type="email" label="Email" placeholder="you@example.com"
+        value={email} onChange={setEmail}
+        autoComplete="email" icon={Mail}
+      />
+      <Field
+        type="password" label="Password" placeholder="••••••••"
+        value={password} onChange={setPassword}
+        autoComplete="current-password" icon={Lock}
+      />
+      {err && <ErrMsg text={err} />}
+      <SubmitBtn loading={loading}>
+        <Sparkles className="h-4 w-4" /> Sign in
+      </SubmitBtn>
+      <p className="text-center text-xs text-muted-foreground pt-1">
         No account?{" "}
-        <button onClick={onCreateAccount} className="text-primary hover:underline">
+        <button type="button" onClick={onCreateAccount} className="text-primary hover:underline font-medium">
           Create one free
         </button>
       </p>
-    </div>
+    </form>
   );
 }
 
-/* ── Create Account Panel (email / password signup — unchanged) ─────────── */
+/* ── Create Account Panel ────────────────────────────────────────────────── */
 function CreateAccountPanel({
-  onSuccess, onSignIn,
+  onSuccess,
+  onSignIn,
 }: { onSuccess: () => void; onSignIn: () => void }) {
   const [name, setName]           = useState("");
   const [email, setEmail]         = useState("");
@@ -386,9 +429,9 @@ function CreateAccountPanel({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
-    if (!email.trim())        { setErr("Email is required.");                        return; }
-    if (!password.trim())     { setErr("Password is required.");                     return; }
-    if (password.length < 6)  { setErr("Password must be at least 6 characters.");  return; }
+    if (!email.trim())        { setErr("Email is required.");                       return; }
+    if (!password.trim())     { setErr("Password is required.");                    return; }
+    if (password.length < 6)  { setErr("Password must be at least 6 characters."); return; }
     setLoading(true);
     try {
       const bio: Record<string, string> = {};
@@ -397,16 +440,16 @@ function CreateAccountPanel({
       if (portfolio.trim()) bio.portfolio = portfolio.trim();
 
       const resp = await auth.register({
-        name: name.trim() || undefined,
-        email: email.trim(),
+        name:     name.trim() || undefined,
+        email:    email.trim(),
         password,
         ...(Object.keys(bio).length ? { bio } : {}),
       });
       setToken(resp.token);
       setStoredUser({
-        id:    (resp.user as { id?: string })?.id,
+        id:    (resp.user as any)?.id,
         email: resp.user?.email,
-        name:  (resp.user as { name?: string })?.name || name.trim() || undefined,
+        name:  (resp.user as any)?.name || name.trim() || undefined,
       });
       onSuccess();
     } catch (e) {
@@ -418,31 +461,39 @@ function CreateAccountPanel({
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
-        <div className="h-11 w-11 rounded-2xl bg-aurora flex items-center justify-center">
-          <Mail className="h-5 w-5 text-primary-foreground" />
+      {/* Header */}
+      <div className="flex flex-col items-center text-center mb-7">
+        <div className="h-14 w-14 rounded-2xl bg-aurora flex items-center justify-center mb-4 shadow-neon">
+          <UserIcon className="h-7 w-7 text-primary-foreground" />
         </div>
-        <div>
-          <h2 className="font-display text-xl font-bold">Create account</h2>
-          <p className="text-xs text-muted-foreground">Join LifeOS — your AI life OS</p>
-        </div>
+        <h2 className="font-display text-2xl font-bold">Create account</h2>
+        <p className="text-sm text-muted-foreground mt-1">Join LifeOS — your AI life OS</p>
       </div>
 
       <form onSubmit={submit} className="space-y-3">
-        <Field placeholder="Full name (optional)" label="Name" value={name} onChange={setName} />
-        <Field type="email" label="Email" placeholder="you@example.com"
-          value={email} onChange={setEmail} autoComplete="email" />
-        <Field type="password" label="Password" placeholder="••••••••"
-          value={password} onChange={setPassword} autoComplete="new-password" />
+        <Field
+          label="Full name" placeholder="Your name (optional)"
+          value={name} onChange={setName} icon={UserIcon}
+        />
+        <Field
+          type="email" label="Email" placeholder="you@example.com"
+          value={email} onChange={setEmail}
+          autoComplete="email" icon={Mail}
+        />
+        <Field
+          type="password" label="Password" placeholder="Min 6 characters"
+          value={password} onChange={setPassword}
+          autoComplete="new-password" icon={Lock}
+        />
 
         <div className="pt-1">
           <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-2">
             Profile links (optional)
           </div>
           <div className="space-y-2">
-            <Field type="url" placeholder="LinkedIn URL"   value={linkedin}   onChange={setLinkedin}   icon={Linkedin} />
-            <Field type="url" placeholder="GitHub URL"     value={github}     onChange={setGithub}     icon={Github} />
-            <Field type="url" placeholder="Portfolio URL"  value={portfolio}  onChange={setPortfolio}  icon={Link2} />
+            <Field type="url" placeholder="LinkedIn profile URL" value={linkedin} onChange={setLinkedin} icon={Linkedin} />
+            <Field type="url" placeholder="GitHub profile URL"   value={github}   onChange={setGithub}   icon={Github} />
+            <Field type="url" placeholder="Portfolio / website"  value={portfolio} onChange={setPortfolio} icon={Link2} />
           </div>
         </div>
 
@@ -455,7 +506,7 @@ function CreateAccountPanel({
 
       <p className="text-center text-xs text-muted-foreground mt-4">
         Already have an account?{" "}
-        <button onClick={onSignIn} className="text-primary hover:underline">
+        <button type="button" onClick={onSignIn} className="text-primary hover:underline font-medium">
           Sign in
         </button>
       </p>

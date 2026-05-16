@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Shell } from "@/components/aurora/Shell";
 import { GlowCard, PageHeader, StatChip, NeonButton } from "@/components/aurora/ui";
-import { Sparkles, ArrowUpRight, Globe2, GitBranch, Brain, Clapperboard, Compass, Loader2, ScanSearch, BookmarkCheck } from "lucide-react";
+import { Sparkles, ArrowUpRight, Globe2, GitBranch, Brain, Newspaper, Compass, Loader2, ScanSearch, Users } from "lucide-react";
 import { dashboard } from "@/lib/api";
 import { getStoredUser } from "@/lib/user";
 import { type SavedJobEntry, type JobStatus, STATUS_META } from "./rjss";
@@ -133,9 +133,10 @@ function Dashboard() {
 
         <ModuleTile to="/goie"       title="GOIE"         desc="Global opportunities"    icon={Globe2}      glow="blue" />
         <ModuleTile to="/multiverse" title="Multiverse"   desc="Simulate parallel paths" icon={GitBranch}   glow="purple" />
-        <ModuleTile to="/cinematic"  title="Cinematic"    desc="Your future, as a film"  icon={Clapperboard} glow="pink" />
+        <ModuleTile to="/news"       title="World News"   desc="Live AI-powered news"    icon={Newspaper}   glow="pink" />
         <ModuleTile to="/mind"       title="Mind Universe" desc="Map your inner cosmos"  icon={Brain}       glow="purple" />
         <ModuleTile to="/explore"    title="Explore"      desc="Decode your behavior"    icon={Compass}     glow="blue" />
+        <ModuleTile to="/people"     title="Community"    desc="Find your tribe"         icon={Users}       glow="blue" />
         <JobTrackerWidget />
       </div>
 

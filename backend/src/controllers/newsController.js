@@ -10,10 +10,19 @@ function todayStr() {
   });
 }
 
+function hashStr(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) + h) ^ str.charCodeAt(i);
+    h = h >>> 0;
+  }
+  return h;
+}
+
 function getImageUrl(topic, index = 0) {
-  const seeds = [topic, `${topic} news`, `${topic} world`, "technology", "business", "global"];
-  const seed = encodeURIComponent(seeds[index % seeds.length] || topic);
-  return `https://source.unsplash.com/800x420/?${seed}&sig=${index}`;
+  // picsum.photos accepts any string seed and returns a consistent, free photo
+  const seed = encodeURIComponent(`${topic}-${index}`);
+  return `https://picsum.photos/seed/${seed}/800/420`;
 }
 
 function systemPrompt(liveSearch) {

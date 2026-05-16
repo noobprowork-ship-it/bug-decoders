@@ -20,7 +20,6 @@ import { Route as GoieRouteImport } from './routes/goie'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CoursesRouteImport } from './routes/courses'
-import { Route as CinematicRouteImport } from './routes/cinematic'
 import { Route as IndexRouteImport } from './routes/index'
 
 const VoiceRoute = VoiceRouteImport.update({
@@ -78,11 +77,6 @@ const CoursesRoute = CoursesRouteImport.update({
   path: '/courses',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CinematicRoute = CinematicRouteImport.update({
-  id: '/cinematic',
-  path: '/cinematic',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -91,7 +85,6 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/cinematic': typeof CinematicRoute
   '/courses': typeof CoursesRoute
   '/dashboard': typeof DashboardRoute
   '/explore': typeof ExploreRoute
@@ -106,7 +99,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/cinematic': typeof CinematicRoute
   '/courses': typeof CoursesRoute
   '/dashboard': typeof DashboardRoute
   '/explore': typeof ExploreRoute
@@ -122,7 +114,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/cinematic': typeof CinematicRoute
   '/courses': typeof CoursesRoute
   '/dashboard': typeof DashboardRoute
   '/explore': typeof ExploreRoute
@@ -139,7 +130,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/cinematic'
     | '/courses'
     | '/dashboard'
     | '/explore'
@@ -154,7 +144,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/cinematic'
     | '/courses'
     | '/dashboard'
     | '/explore'
@@ -169,7 +158,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/cinematic'
     | '/courses'
     | '/dashboard'
     | '/explore'
@@ -185,7 +173,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  CinematicRoute: typeof CinematicRoute
   CoursesRoute: typeof CoursesRoute
   DashboardRoute: typeof DashboardRoute
   ExploreRoute: typeof ExploreRoute
@@ -278,13 +265,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CoursesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/cinematic': {
-      id: '/cinematic'
-      path: '/cinematic'
-      fullPath: '/cinematic'
-      preLoaderRoute: typeof CinematicRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -297,7 +277,6 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  CinematicRoute: CinematicRoute,
   CoursesRoute: CoursesRoute,
   DashboardRoute: DashboardRoute,
   ExploreRoute: ExploreRoute,
