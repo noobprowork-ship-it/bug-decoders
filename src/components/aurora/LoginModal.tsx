@@ -1,19 +1,14 @@
 /**
  * LifeOS Login Modal
  *
- * When VITE_GOOGLE_CLIENT_ID is set:
- *   • Loads Google Identity Services (script already in __root.tsx)
- *   • Triggers the One-Tap auto-prompt (auto_select: true) immediately —
- *     the user is signed in with zero clicks if they have an active Google
- *     session in the browser.
- *   • Renders Google's branded button as a fallback if the prompt is dismissed.
- *   • Offers email/password below as an "other account" path.
+ * Sign-In:  Google One-Tap / Sign-In-With-Google ONLY.
+ *           No email / password form is shown on the sign-in panel.
+ *           The Google account-chooser popup handles the full auth flow.
  *
- * When VITE_GOOGLE_CLIENT_ID is NOT set:
- *   • Shows a clean email / password form with no Google references.
- *   • Users never see a broken or half-configured Google button.
+ * Sign-Up:  "Create Account" panel (email + password + optional profile
+ *           links) — kept exactly as before.
  *
- * Session persistence: the JWT is stored in localStorage ("aurora.token").
+ * Session persistence: JWT stored in localStorage ("aurora.token").
  * On every app boot the Shell reads it and skips the modal entirely.
  */
 
@@ -177,15 +172,7 @@ const GoogleLogo = () => (
   </svg>
 );
 
-const Divider = ({ label }: { label: string }) => (
-  <div className="flex items-center gap-3 my-4">
-    <div className="flex-1 h-px bg-border/60" />
-    <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">{label}</span>
-    <div className="flex-1 h-px bg-border/60" />
-  </div>
-);
-
-/* ── Sign-In Panel ───────────────────────────────────────────────────────── */
+/* ── Sign-In Panel — Google Only ─────────────────────────────────────────── */
 function SignInPanel({
   onSuccess,
   onCreateAccount,
@@ -195,7 +182,7 @@ function SignInPanel({
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col items-center text-center mb-7">
+      <div className="flex flex-col items-center text-center mb-8">
         <div className="h-14 w-14 rounded-2xl bg-aurora flex items-center justify-center mb-4 shadow-neon">
           <Sparkles className="h-7 w-7 text-primary-foreground" />
         </div>
@@ -203,28 +190,23 @@ function SignInPanel({
         <p className="text-sm text-muted-foreground mt-1">Sign in to continue to LifeOS</p>
       </div>
 
-      {clientId ? (
-        <GoogleOneTapSignIn
-          clientId={clientId}
-          onSuccess={onSuccess}
-          onCreateAccount={onCreateAccount}
-        />
-      ) : (
-        <EmailSignIn onSuccess={onSuccess} onCreateAccount={onCreateAccount} />
-      )}
+      <GoogleSignInButton
+        clientId={clientId}
+        onSuccess={onSuccess}
+        onCreateAccount={onCreateAccount}
+      />
     </div>
   );
 }
 
-/* ── Google One-Tap (when VITE_GOOGLE_CLIENT_ID is configured) ───────────── */
-function GoogleOneTapSignIn({
+/* ── Google Sign-In Button (One-Tap + Account Chooser) ───────────────────── */
+function GoogleSignInButton({
   clientId,
   onSuccess,
   onCreateAccount,
-}: { clientId: string; onSuccess: () => void; onCreateAccount: () => void }) {
+}: { clientId?: string; onSuccess: () => void; onCreateAccount: () => void }) {
   const [gsiStatus, setGsiStatus]     = useState<"loading" | "ready" | "failed">("loading");
   const [authLoading, setAuthLoading] = useState(false);
-  const [showEmail, setShowEmail]     = useState(false);
   const [err, setErr]                 = useState<string | null>(null);
   const buttonRef                     = useRef<HTMLDivElement>(null);
 
@@ -249,7 +231,10 @@ function GoogleOneTapSignIn({
   }, [onSuccess]);
 
   useEffect(() => {
-    if (!clientId) return;
+    if (!clientId) {
+      setGsiStatus("failed");
+      return;
+    }
 
     let ticker: ReturnType<typeof setInterval> | undefined;
     let tries = 0;
@@ -267,10 +252,10 @@ function GoogleOneTapSignIn({
       g.initialize({
         client_id:             clientId,
         callback:              handleCredential,
-        auto_select:           true,   // ← sign in automatically if only one Google account
+        auto_select:           true,
         cancel_on_tap_outside: true,
         context:               "signin",
-        itp_support:           true,   // ← ITP support for Safari
+        itp_support:           true,
       });
 
       if (buttonRef.current) {
@@ -278,7 +263,7 @@ function GoogleOneTapSignIn({
           theme:          "outline",
           size:           "large",
           text:           "continue_with",
-          shape:          "rectangular",
+          shape:          "pill",
           width:          370,
           logo_alignment: "left",
         });
@@ -286,7 +271,6 @@ function GoogleOneTapSignIn({
 
       setGsiStatus("ready");
 
-      // Fire the prompt — auto_select means it may resolve silently
       g.prompt((notification) => {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
           // One-Tap was suppressed — the rendered button below still works
@@ -298,117 +282,84 @@ function GoogleOneTapSignIn({
     return () => clearInterval(ticker);
   }, [clientId, handleCredential]);
 
+  /* Signing in state */
   if (authLoading) {
     return (
-      <div className="flex flex-col items-center gap-3 py-8 text-sm text-muted-foreground">
+      <div className="flex flex-col items-center gap-3 py-10 text-sm text-muted-foreground">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
         <span>Signing you in with Google…</span>
       </div>
     );
   }
 
+  /* Google not configured */
+  if (!clientId) {
+    return (
+      <div className="space-y-4">
+        <div className="glass rounded-2xl p-4 text-center text-sm text-muted-foreground space-y-1">
+          <GoogleLogo />
+          <p className="font-medium text-foreground mt-2">Google Sign-In not configured</p>
+          <p className="text-xs">
+            Set <code className="text-primary">VITE_GOOGLE_CLIENT_ID</code> to enable Google login.
+          </p>
+        </div>
+        <p className="text-center text-xs text-muted-foreground">
+          No account?{" "}
+          <button onClick={onCreateAccount} className="text-primary hover:underline font-medium">
+            Create one free
+          </button>
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      {/* Google branded button */}
-      <div className="min-h-[44px] flex items-center justify-center">
+    <div className="space-y-5">
+      {/* Google's own branded button / account chooser */}
+      <div className="min-h-[48px] flex items-center justify-center">
         {gsiStatus === "loading" && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-3">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading Google sign-in…
           </div>
         )}
+
         {gsiStatus === "failed" && (
+          /* Fallback custom button that opens the account chooser via prompt() */
           <button
             type="button"
-            onClick={() => setShowEmail(true)}
-            className="w-full glass border border-border/60 rounded-2xl py-3 px-4 flex items-center justify-center gap-3 text-sm font-medium hover:bg-white/5 transition"
+            onClick={() => {
+              if (window.google?.accounts?.id) {
+                window.google.accounts.id.prompt();
+              }
+            }}
+            className="w-full glass border border-border/60 rounded-full py-3 px-5 flex items-center justify-center gap-3 text-sm font-medium hover:bg-white/8 active:scale-[0.98] transition-all"
           >
             <GoogleLogo /> Continue with Google
           </button>
         )}
+
+        {/* Google's official rendered button (visible when ready) */}
         <div ref={buttonRef} className={gsiStatus === "ready" ? "w-full" : "hidden"} />
       </div>
 
-      {err && <div className="mt-3"><ErrMsg text={err} /></div>}
+      {err && <ErrMsg text={err} />}
 
-      <Divider label="or" />
+      <p className="text-center text-xs text-muted-foreground">
+        By continuing you agree to our{" "}
+        <span className="text-primary/80">Terms of Service</span>
+        {" "}and{" "}
+        <span className="text-primary/80">Privacy Policy</span>.
+      </p>
 
-      {showEmail ? (
-        <EmailSignIn onSuccess={onSuccess} onCreateAccount={onCreateAccount} />
-      ) : (
-        <button
-          type="button"
-          onClick={() => setShowEmail(true)}
-          className="w-full glass border border-border/40 rounded-2xl py-3 px-4 flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition"
-        >
-          <Mail className="h-4 w-4" /> Use email &amp; password
-        </button>
-      )}
+      <div className="h-px bg-border/40" />
 
-      <p className="text-center text-xs text-muted-foreground mt-5">
+      <p className="text-center text-xs text-muted-foreground">
         No account?{" "}
         <button onClick={onCreateAccount} className="text-primary hover:underline font-medium">
           Create one free
         </button>
       </p>
     </div>
-  );
-}
-
-/* ── Email Sign-In (primary when no Google, secondary when Google is on) ─── */
-function EmailSignIn({
-  onSuccess,
-  onCreateAccount,
-}: { onSuccess: () => void; onCreateAccount: () => void }) {
-  const [email, setEmail]       = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading]   = useState(false);
-  const [err, setErr]           = useState<string | null>(null);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setErr(null);
-    if (!email.trim())    { setErr("Email is required.");    return; }
-    if (!password.trim()) { setErr("Password is required."); return; }
-    setLoading(true);
-    try {
-      const resp = await auth.login({ email: email.trim(), password });
-      setToken(resp.token);
-      setStoredUser({
-        id:    (resp.user as any)?.id,
-        email: resp.user?.email,
-        name:  (resp.user as any)?.name,
-      });
-      onSuccess();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Sign-in failed. Please check your credentials.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <form onSubmit={submit} className="space-y-3">
-      <Field
-        type="email" label="Email" placeholder="you@example.com"
-        value={email} onChange={setEmail}
-        autoComplete="email" icon={Mail}
-      />
-      <Field
-        type="password" label="Password" placeholder="••••••••"
-        value={password} onChange={setPassword}
-        autoComplete="current-password" icon={Lock}
-      />
-      {err && <ErrMsg text={err} />}
-      <SubmitBtn loading={loading}>
-        <Sparkles className="h-4 w-4" /> Sign in
-      </SubmitBtn>
-      <p className="text-center text-xs text-muted-foreground pt-1">
-        No account?{" "}
-        <button type="button" onClick={onCreateAccount} className="text-primary hover:underline font-medium">
-          Create one free
-        </button>
-      </p>
-    </form>
   );
 }
 
